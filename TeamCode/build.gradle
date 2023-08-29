@@ -25,6 +25,7 @@ android {
 
 dependencies {
     implementation project(':FtcRobotController')
+    implementation project(path: ':SpaceSaints_MPPC')
     annotationProcessor files('lib/OpModeAnnotationProcessor.jar')
     implementation ('javax.vecmath:vecmath:1.5.2')
 }
