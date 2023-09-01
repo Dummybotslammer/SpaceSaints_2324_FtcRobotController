@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
 import javax.vecmath.Vector2d;
-import org.firstinspires.ftc.teamcode.spacesaints_mppc.DriveControllers.OmniDriveController;
+import com.github.dummybotslammer.spacesaintsmppc.DriveControllers.OmniDriveController;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -60,18 +60,19 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
         drive3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         omnidrive = new OmniDriveController(drive1, drive2, drive3, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_COREHEXMOTOR_REV, wheelDiameter);
+        omnidrive.setHeadingAngle(Math.PI/2);
         waitForStart();
 
         while(opModeIsActive()) {
             leftStickX = gamepad1.left_stick_x;
-            leftStickY = -1*gamepad1.left_stick_y;
+            leftStickY = -gamepad1.left_stick_y;
             rightStickX = gamepad1.right_stick_x;
             angularVelocity = maxAngularVelocity*rightStickX;
 
             stickVector.set(new double[]{leftStickX, leftStickY});
             stickVector.scale(stickMovementVectorScaleFactor);
             omnidrive.setAngularVelocity(angularVelocity);
-            omnidrive.setLinearVelocity(stickVector);
+            double[] temp = omnidrive.setGlobalLinearVelocity(stickVector);
 
             omnidrive.computeVelocitiesThenDrive();
             omnidrive.updateOdometry(elapsedTime*(Math.pow(10, 9)));
@@ -84,6 +85,7 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
             telemetry.addData("Left Stick X", leftStickX);
             telemetry.addData("Left Stick Y", leftStickY);
             telemetry.addData("Right Stick X", rightStickX);
+            telemetry.addData("Relative Linear Velocity", String.format("%f, %f", omnidrive.getLinearVelocity().x, omnidrive.getLinearVelocity().y));
             telemetry.addData("Drive1 Velocity", String.format("%f, %f", t1[0], t1[1]));
             telemetry.addData("Drive2 Velocity", String.format("%f, %f", t2[0], t2[1]));
             telemetry.addData("Drive3 Velocity", String.format("%f, %f", t3[0], t3[1]));
@@ -95,6 +97,7 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
             telemetry.addData("Drive3 Vector Angle", Math.toDegrees(omnidrive.getDriveVelocities()[0].angle(omnidrive.getUnitVectors()[0])));
             telemetry.addData("Robot Position", String.format("%f, %f", robotPosition.x, robotPosition.y));
             telemetry.addData("Robot Heading Angle", Math.toDegrees(omnidrive.getHeadingAngle()));
+            telemetry.addData("New Computed X nd Y", String.format("%f, %f", temp[0], temp[1]));
             telemetry.update();
         }
     }

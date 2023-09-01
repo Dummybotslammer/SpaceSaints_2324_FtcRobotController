@@ -1,8 +1,10 @@
-package org.firstinspires.ftc.teamcode.spacesaints_mppc.DriveControllers;
+package com.github.dummybotslammer.spacesaintsmppc.DriveControllers;
 
+import com.github.dummybotslammer.spacesaintsmppc.MathUtils;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 
 import javax.vecmath.Vector2d;
+import com.github.dummybotslammer.spacesaintsmppc.MathUtils.*;
 
 public class OmniDriveController {
     //The OmniDrive runs on 3 different motors.
@@ -19,7 +21,7 @@ public class OmniDriveController {
     private Vector2d drive3_unitVector = new Vector2d(-1.0, 0.0);
 
     //Physical Measurements
-    private Vector2d linear_velocity = new Vector2d(0,0);
+    private Vector2d linear_velocity = new Vector2d(0,0); //Relative
     private Vector2d drive1_velocity = new Vector2d(0,0);
     private Vector2d drive2_velocity = new Vector2d(0,0);
     private Vector2d drive3_velocity = new Vector2d(0,0);
@@ -74,6 +76,24 @@ public class OmniDriveController {
     }
 
     //Setter/Getter Methods
+    public double[] setGlobalLinearVelocity(Vector2d vector) {
+        //TODO: TURNS OUT I CANT DO MATH. FIX THIS SHIT CODE!
+        //Compute Angles
+        double vectorAngle = MathUtils.getGlobalAngle(vector);
+        double angleDiff = vectorAngle - odo_heading_angle;
+
+        //Hardcoded Vector * Rotation Matrix Computation (CCW):
+        //If the angleDiff >= 0, rotate CCW
+        //If the angleDiff < 0, rotate CW
+        double x = (angleDiff >= 0)?
+                (vector.x * Math.cos(angleDiff)) + (vector.y * -Math.sin(angleDiff)) :
+                (vector.x * Math.cos(Math.abs(angleDiff))) + (vector.y * Math.sin(Math.abs(angleDiff)));
+        double y = (angleDiff >= 0)?
+                (vector.x * Math.sin(angleDiff)) + (vector.y * Math.cos(angleDiff)) :
+                (vector.x * -Math.sin(Math.abs(angleDiff))) + (vector.y * Math.cos(Math.abs(angleDiff)));
+        linear_velocity = new Vector2d(x, y);
+        return new double[] {x,y};
+    }
     public void setLinearVelocity(Vector2d vector) {
         linear_velocity = vector;
     }
@@ -88,6 +108,11 @@ public class OmniDriveController {
         drive3 = motor3;
     }
 
+    public void setHeadingAngle(double r) {
+        //Intended to be used to set the initial angle.
+        odo_heading_angle = r;
+    }
+
     public Vector2d[] getDriveVelocities() {
         return new Vector2d[]{drive1_velocity, drive2_velocity, drive3_velocity};
     }
@@ -100,7 +125,7 @@ public class OmniDriveController {
         return new double[]{drive1_speed, drive2_speed, drive3_speed};
     }
 
-    public Vector2d getHeading_velocity() {
+    public Vector2d getLinearVelocity() {
         return linear_velocity;
     }
 
@@ -169,12 +194,16 @@ public class OmniDriveController {
         odo_position.add(net_displacement);
 
         //Calculate current heading angle.
-        double drive1_deltaAngle = drive1_distance/drive1_trackWidth;
-        double drive2_deltaAngle = drive2_distance/drive2_trackWidth;
-        double drive3_deltaAngle = drive3_distance/drive3_trackWidth;
-        double net_deltaAngle = drive1_deltaAngle+drive2_deltaAngle+drive3_deltaAngle;
+        //When robot turns right (negative change in angle), the motor distance increases (clockwise motor rotation)
+        //When robot turns left (positive change in angle), the motor distance decreases (anticlockwise motor rotation)
+        //Thus the distances must be negated.
+        double drive1_deltaAngle = -drive1_distance/drive1_trackWidth;
+        double drive2_deltaAngle = -drive2_distance/drive2_trackWidth;
+        double drive3_deltaAngle = -drive3_distance/drive3_trackWidth;
+        //ANGLE SUM / (# OF MOTORS / 2)
+        double net_deltaAngle = (drive1_deltaAngle+drive2_deltaAngle+drive3_deltaAngle)/1.5;
 
-        odo_heading_angle += net_deltaAngle;
+        odo_heading_angle = MathUtils.addAngles(odo_heading_angle, net_deltaAngle);
 
         drive1_prevPosition = drive1_currentPosition;
         drive2_prevPosition = drive2_currentPosition;
