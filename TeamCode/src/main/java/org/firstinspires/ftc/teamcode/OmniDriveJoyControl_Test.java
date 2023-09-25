@@ -42,9 +42,8 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
         double angularVelocity;
         double startElapsed = System.nanoTime();
         double endElapsed = System.nanoTime();
-        double elapsedTime = endElapsed - startElapsed;
+        double elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9)); //Converted to seconds
         Vector2d stickVector = new Vector2d(0, 0);
-        Vector2d heading_velocity;
 
         //MOTOR & ENCODER RESETS AND CONFIGS
         drive1.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -60,7 +59,7 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
         drive3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         omnidrive = new OmniDriveController(drive1, drive2, drive3, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_COREHEXMOTOR_REV, wheelDiameter);
-        omnidrive.setHeadingAngle(Math.PI/2);
+        omnidrive.setOdoHeadingAngle(Math.PI/2);
         waitForStart();
 
         while(opModeIsActive()) {
@@ -69,35 +68,41 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
             rightStickX = gamepad1.right_stick_x;
             angularVelocity = maxAngularVelocity*rightStickX;
 
+            endElapsed = System.nanoTime();
+            elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
+
             stickVector.set(new double[]{leftStickX, leftStickY});
             stickVector.scale(stickMovementVectorScaleFactor);
-            omnidrive.setAngularVelocity(angularVelocity);
-            double[] temp = omnidrive.setGlobalLinearVelocity(stickVector);
+            omnidrive.setTargetAngularVelocity(angularVelocity);
+            omnidrive.setGlobalTargetLinearVelocity(stickVector);
 
             omnidrive.computeVelocitiesThenDrive();
-            omnidrive.updateOdometry(elapsedTime*(Math.pow(10, 9)));
+            omnidrive.updateOdometry(elapsedTime);
 
             //DEBUG
-            double[] t1 = {omnidrive.getDriveVelocities()[0].x,omnidrive.getDriveVelocities()[0].y};
-            double[] t2 = {omnidrive.getDriveVelocities()[1].x,omnidrive.getDriveVelocities()[1].y};
-            double[] t3 = {omnidrive.getDriveVelocities()[2].x,omnidrive.getDriveVelocities()[2].y};
+            double[] t1 = {omnidrive.getTargetDriveVelocities()[0].x,omnidrive.getTargetDriveVelocities()[0].y};
+            double[] t2 = {omnidrive.getTargetDriveVelocities()[1].x,omnidrive.getTargetDriveVelocities()[1].y};
+            double[] t3 = {omnidrive.getTargetDriveVelocities()[2].x,omnidrive.getTargetDriveVelocities()[2].y};
             Vector2d robotPosition = omnidrive.getPosition();
+
+            startElapsed = System.nanoTime();
+
             telemetry.addData("Left Stick X", leftStickX);
             telemetry.addData("Left Stick Y", leftStickY);
             telemetry.addData("Right Stick X", rightStickX);
-            telemetry.addData("Relative Linear Velocity", String.format("%f, %f", omnidrive.getLinearVelocity().x, omnidrive.getLinearVelocity().y));
+            telemetry.addData("Relative Linear Velocity", String.format("%f, %f", omnidrive.getTargetRelativeLinearVelocity().x, omnidrive.getTargetRelativeLinearVelocity().y));
             telemetry.addData("Drive1 Velocity", String.format("%f, %f", t1[0], t1[1]));
             telemetry.addData("Drive2 Velocity", String.format("%f, %f", t2[0], t2[1]));
             telemetry.addData("Drive3 Velocity", String.format("%f, %f", t3[0], t3[1]));
-            telemetry.addData("Drive1 Speed", omnidrive.getDriveSpeeds()[0]);
-            telemetry.addData("Drive2 Speed", omnidrive.getDriveSpeeds()[1]);
-            telemetry.addData("Drive3 Speed", omnidrive.getDriveSpeeds()[2]);
-            telemetry.addData("Drive1 Vector Angle", Math.toDegrees(omnidrive.getDriveVelocities()[0].angle(omnidrive.getUnitVectors()[0])));
-            telemetry.addData("Drive2 Vector Angle", Math.toDegrees(omnidrive.getDriveVelocities()[0].angle(omnidrive.getUnitVectors()[0])));
-            telemetry.addData("Drive3 Vector Angle", Math.toDegrees(omnidrive.getDriveVelocities()[0].angle(omnidrive.getUnitVectors()[0])));
+            telemetry.addData("Drive1 Speed", omnidrive.getTargetDriveSpeeds()[0]);
+            telemetry.addData("Drive2 Speed", omnidrive.getTargetDriveSpeeds()[1]);
+            telemetry.addData("Drive3 Speed", omnidrive.getTargetDriveSpeeds()[2]);
+            telemetry.addData("Drive1 Vector Angle", Math.toDegrees(omnidrive.getTargetDriveVelocities()[0].angle(omnidrive.getUnitVectors()[0])));
+            telemetry.addData("Drive2 Vector Angle", Math.toDegrees(omnidrive.getTargetDriveVelocities()[0].angle(omnidrive.getUnitVectors()[0])));
+            telemetry.addData("Drive3 Vector Angle", Math.toDegrees(omnidrive.getTargetDriveVelocities()[0].angle(omnidrive.getUnitVectors()[0])));
             telemetry.addData("Robot Position", String.format("%f, %f", robotPosition.x, robotPosition.y));
             telemetry.addData("Robot Heading Angle", Math.toDegrees(omnidrive.getHeadingAngle()));
-            telemetry.addData("New Computed X nd Y", String.format("%f, %f", temp[0], temp[1]));
+            telemetry.addData("Global X and Y Values", String.format("%f, %f", omnidrive.getGlobalTargetLinearVelocity().x, omnidrive.getGlobalTargetLinearVelocity().y));
             telemetry.update();
         }
     }

@@ -1,0 +1,9 @@
+A. TRACK FOLLOW
+1. A path is marked from point A to B, though more points can be used to describe more complicated geometry.
+    Path = r(t)
+2. Path is also initialised with data about the target speed.
+    Path Speed  = s
+3. Program Begins:
+4. Init Time = t
+4. Set TargetPoint = r(t)
+5. Set ErrorVec =
