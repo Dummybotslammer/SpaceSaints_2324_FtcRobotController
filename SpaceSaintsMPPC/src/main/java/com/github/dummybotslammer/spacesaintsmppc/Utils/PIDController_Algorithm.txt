@@ -3,7 +3,10 @@ A. TRACK FOLLOW
     Path = r(t)
 2. Path is also initialised with data about the target speed.
     Path Speed  = s
-3. Program Begins:
+3. while not at Point B
 4. Init Time = t
-4. Set TargetPoint = r(t)
-5. Set ErrorVec =
+5. Set TargetPoint = r(t)
+6. Set ErrorVec = TargetPoint - CurrentRobotPosition
+7. Pass ErrorVec into the Vector PID controller.
+8. Use the output to move the robot
+9. repeat until at point B

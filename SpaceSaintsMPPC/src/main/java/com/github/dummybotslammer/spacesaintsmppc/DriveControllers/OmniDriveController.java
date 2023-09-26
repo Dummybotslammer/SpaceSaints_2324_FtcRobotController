@@ -1,7 +1,10 @@
 package com.github.dummybotslammer.spacesaintsmppc.DriveControllers;
 
 import com.github.dummybotslammer.spacesaintsmppc.Utils.MathUtils;
+import com.github.dummybotslammer.spacesaintsmppc.Utils.PIDController;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+
+import java.util.Vector;
 
 import javax.vecmath.Vector2d;
 
@@ -44,6 +47,8 @@ public class OmniDriveController {
     private Vector2d DRIVE3_UNIT_VECTOR = new Vector2d(-1.0, 0.0);
 
     //3-- TARGET & CONTROL VARIABLES --
+    public PIDController motionController;
+    public PIDController rotationController;
     private Vector2d target_linear_velocity = new Vector2d(0,0); //Relative
     private Vector2d target_drive1_velocity = new Vector2d(0,0);
     private Vector2d target_drive2_velocity = new Vector2d(0,0);
@@ -92,6 +97,9 @@ public class OmniDriveController {
         drive1 = motor1;
         drive2 = motor2;
         drive3 = motor3;
+
+        motionController = new PIDController(1.0, 0, 0);
+        rotationController = new PIDController(1.0, 0, 0);
     }
 
     public OmniDriveController(DcMotorEx motor1, DcMotorEx motor2, DcMotorEx motor3, int TICKS_PER_MOTOR1_REV, int TICKS_PER_MOTOR2_REV, int TICKS_PER_MOTOR3_REV, double wheel_diameter) {
@@ -104,6 +112,9 @@ public class OmniDriveController {
         TICKS_PER_DRIVE3_REV = TICKS_PER_MOTOR3_REV;
 
         WHEEL_DIAMETER = wheel_diameter;
+
+        motionController = new PIDController(1.0, 0, 0);
+        rotationController = new PIDController(1.0, 0, 0);
     }
 
     //Setter/Getter Methods
@@ -131,6 +142,10 @@ public class OmniDriveController {
 
     public void setTargetRelativeLinearVelocity(Vector2d vector) {
         target_linear_velocity = vector;
+    }
+
+    public double getTargetAngularVelocity() {
+        return target_angular_velocity;
     }
 
     public void setTargetAngularVelocity(double w) {
@@ -255,7 +270,7 @@ public class OmniDriveController {
 
         odo_heading_angle = MathUtils.addAngles(odo_heading_angle, net_deltaAngle);
 
-        //--SECTION 2: COMPUTE ACTUAL LINEAR VEL. + ACCEL. & ACTUAL ANGULAR VEL. + ACCEL.
+        //TODO:--SECTION 2: COMPUTE ACTUAL LINEAR VEL. + ACCEL. & ACTUAL ANGULAR VEL. + ACCEL.
         //Rotational Motion
 
 
@@ -293,4 +308,30 @@ public class OmniDriveController {
         computeDriveVelFromHeadingAndAngularVel();
         drive();
     }
+
+    public void targetCoordinates(double tx, double ty, double errorTolerance) {
+        Vector2d target = new Vector2d(tx, ty);
+        Vector2d error = new Vector2d(0,0);
+        Vector2d correction;
+
+        double startElapsed = System.nanoTime();
+        double endElapsed = System.nanoTime();
+        double elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
+
+        while(error.length() > errorTolerance) {
+            endElapsed = System.nanoTime();
+            elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
+
+            error.sub(target, odo_position);
+            updateOdometry(elapsedTime);
+            motionController.setDeltaTime(elapsedTime);
+            motionController.setCurrentVectorError(error);
+            //correction = motionController.updateVectorPID();
+            //setGlobalTargetLinearVelocity(correction);
+            computeVelocitiesThenDrive();
+        }
+
+        setGlobalTargetLinearVelocity(new Vector2d(0,0));
+    }
+
 }

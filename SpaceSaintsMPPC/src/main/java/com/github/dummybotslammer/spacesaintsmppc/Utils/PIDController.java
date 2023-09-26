@@ -18,8 +18,7 @@ public class PIDController {
     private double D;
 
     private Vector2d vec_P;
-    private Vector2d current_vec_I;
-    private Vector2d previous_vec_I;
+    private Vector2d vec_I;
     private Vector2d vec_D;
 
     //Variables:
@@ -46,8 +45,7 @@ public class PIDController {
         correction= 0;
 
         vec_P = new Vector2d(0,0);
-        current_vec_I = new Vector2d(0,0);
-        previous_vec_I = new Vector2d(0,0);
+        vec_I = new Vector2d(0,0);
         vec_D = new Vector2d(0,0);
         vec_correction = new Vector2d(0,0);
 
@@ -71,8 +69,7 @@ public class PIDController {
         correction= 0;
 
         vec_P = new Vector2d(0,0);
-        current_vec_I = new Vector2d(0,0);
-        previous_vec_I = new Vector2d(0,0);
+        vec_I = new Vector2d(0,0);
         vec_D = new Vector2d(0,0);
         vec_correction = new Vector2d(0,0);
 
@@ -94,7 +91,7 @@ public class PIDController {
     }
 
     public Vector2d[] getVectorPIDValues() {
-        return new Vector2d[]{vec_P, current_vec_I, previous_vec_I, vec_D};
+        return new Vector2d[]{vec_P, vec_I, vec_D};
     }
 
     public double getCurrentScalarError(){
@@ -139,10 +136,9 @@ public class PIDController {
         D = d;
     }
 
-    public void setVectorPIDValues(Vector2d p, Vector2d current_i, Vector2d previous_i, Vector2d d) {
+    public void setVectorPIDValues(Vector2d p, Vector2d i, Vector2d d) {
         vec_P = p;
-        current_vec_I = current_i;
-        previous_vec_I = previous_i;
+        vec_I = i;
         vec_D = d;
     }
 
@@ -182,30 +178,26 @@ public class PIDController {
         return correction;
     }
 
-    public Vector2d updateVectorPID() {
+    public Vector2d[] updateVectorPID() {
         vec_P = new Vector2d(current_vec_error);
         vec_P.scale(Kp);
 
-        current_vec_I = new Vector2d(0,0);
-        vec_D = new Vector2d(0,0);
-
-        //current_vec_I =
+        vec_I.normalize(current_vec_error);
         current_I = MathUtils.vectorIntegrate(current_vec_error, current_vec_error, previous_vec_error, deltaTime, previous_I);
+        vec_I.scale(current_I);
+        vec_I.scale(Ki);
 
         vec_D = MathUtils.vectorDerivate(current_vec_error, previous_vec_error, deltaTime);
-
-        //TODO: ADD IN THE I (Line integral in a scalar field) AND D
-        //TODO: ADD IN THE D
+        vec_D.scale(Kd);
 
         //Correction Vector: Sum of the PID vectors.
-        vec_correction.add(vec_P, current_vec_I);
+        vec_correction.add(vec_P, vec_I);
         vec_correction.add(vec_D);
 
         //The current values are now assigned to the 'previous' variables
         previous_I = current_I;
-        previous_vec_I = new Vector2d(current_vec_I);
         previous_vec_error = new Vector2d(current_vec_error);
 
-        return vec_correction;
+        return new Vector2d[]{vec_correction, vec_P, vec_I, vec_D};
     }
 }
