@@ -1,10 +1,12 @@
-package com.github.dummybotslammer.spacesaintsmppc.DriveControllers;
+package com.github.dummybotslammer.spacesaintsmppc.Controllers;
 
 import com.github.dummybotslammer.spacesaintsmppc.Utils.MathUtils;
 import com.github.dummybotslammer.spacesaintsmppc.Utils.PIDController;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.IMU;
 
-import java.util.Vector;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
 import javax.vecmath.Vector2d;
 
@@ -31,6 +33,7 @@ public class OmniDriveController {
     private DcMotorEx drive1;
     private DcMotorEx drive2;
     private DcMotorEx drive3;
+    private IMU imu;
 
     //2-- DRIVEBASE CHARACTERISTIC VARIABLES --
     private double WHEEL_DIAMETER = 0.09;
@@ -47,8 +50,12 @@ public class OmniDriveController {
     private Vector2d DRIVE3_UNIT_VECTOR = new Vector2d(-1.0, 0.0);
 
     //3-- TARGET & CONTROL VARIABLES --
-    public PIDController motionController;
+    public PIDController translationController;
     public PIDController rotationController;
+    private double translationTolerance = 0.0;
+    private double rotationTolerance = 0.0;
+    private Vector2d target_position = new Vector2d(0, 0);
+    private double target_heading = 0.0;
     private Vector2d target_linear_velocity = new Vector2d(0,0); //Relative
     private Vector2d target_drive1_velocity = new Vector2d(0,0);
     private Vector2d target_drive2_velocity = new Vector2d(0,0);
@@ -69,6 +76,7 @@ public class OmniDriveController {
     private Vector2d odo_prev_acceleration = new Vector2d(0,0);
 
     //Rotational Motion
+    private double odo_intial_heading = 0.0;
     private double odo_heading_angle = 0.0;
     private double odo_prev_heading_angle = 0.0;
     private double odo_angular_vel = 0.0;
@@ -98,14 +106,15 @@ public class OmniDriveController {
         drive2 = motor2;
         drive3 = motor3;
 
-        motionController = new PIDController(1.0, 0, 0);
+        translationController = new PIDController(1.0, 0, 0);
         rotationController = new PIDController(1.0, 0, 0);
     }
 
-    public OmniDriveController(DcMotorEx motor1, DcMotorEx motor2, DcMotorEx motor3, int TICKS_PER_MOTOR1_REV, int TICKS_PER_MOTOR2_REV, int TICKS_PER_MOTOR3_REV, double wheel_diameter) {
+    public OmniDriveController(DcMotorEx motor1, DcMotorEx motor2, DcMotorEx motor3, IMU imuObj, int TICKS_PER_MOTOR1_REV, int TICKS_PER_MOTOR2_REV, int TICKS_PER_MOTOR3_REV, double wheel_diameter) {
         drive1 = motor1;
         drive2 = motor2;
         drive3 = motor3;
+        imu = imuObj;
 
         TICKS_PER_DRIVE1_REV = TICKS_PER_MOTOR1_REV;
         TICKS_PER_DRIVE2_REV = TICKS_PER_MOTOR2_REV;
@@ -113,12 +122,36 @@ public class OmniDriveController {
 
         WHEEL_DIAMETER = wheel_diameter;
 
-        motionController = new PIDController(1.0, 0, 0);
+        translationController = new PIDController(1.0, 0, 0);
         rotationController = new PIDController(1.0, 0, 0);
     }
 
     //Setter/Getter Methods
     //TODO: COMPLETE ALL THE SETTERS AND GETTERS
+    public void setRotationControllerTolerance(double t) { rotationTolerance = t; }
+
+    public double getRotationControllerTolerance() { return rotationTolerance; }
+
+    public void setTranslationControllerTolerance(double t) { translationTolerance = t; }
+
+    public double getTranslationControllerTolerance() { return translationTolerance; }
+
+    public void setInitialHeading(double heading) {
+        odo_intial_heading = heading;
+    }
+
+    public double getInitialHeading() {
+        return odo_intial_heading;
+    }
+
+    public void setIMU(IMU imuObj) {
+        imu = imuObj;
+    }
+
+    public IMU getIMU() {
+        return imu;
+    }
+
     public void setGlobalTargetLinearVelocity(Vector2d vector) {
         //Compute the translational matrix values
         //First, the unit vectors relative to the robot's heading are computed.
@@ -136,11 +169,27 @@ public class OmniDriveController {
         target_linear_velocity = transVector;
     }
 
+    public Vector2d getTargetPosition() {
+        return target_position;
+    }
+
+    public double getTargetHeading() {
+        return target_heading;
+    }
+
+    public void setTargetPosition(Vector2d v) {
+        target_position = v;
+    }
+
+    public void setTargetHeading(double h) {
+        target_heading = h;
+    }
+
     public Vector2d getGlobalTargetLinearVelocity() {
         return convertRelativeToGlobalVector(target_linear_velocity);
     }
 
-    public void setTargetRelativeLinearVelocity(Vector2d vector) {
+    public void setRelativeTargetLinearVelocity(Vector2d vector) {
         target_linear_velocity = vector;
     }
 
@@ -225,7 +274,7 @@ public class OmniDriveController {
         target_drive3_speed = target_drive3_velocity.length() * ((target_drive3_velocity.angle(DRIVE3_UNIT_VECTOR) > 0)? -1:1);
     }
 
-    public void updateOdometry(double currentTime) {
+    public void updateOdometry(double currentTime, boolean utilizeIMU) {
         //Update readings
         odo_time = currentTime;
         double deltaTime = odo_time - odo_prevtime;
@@ -258,21 +307,36 @@ public class OmniDriveController {
         net_displacement.add(drive3_displacement);
         odo_position.add(net_displacement);
 
-        //Calculate current heading angle.
-        //When robot turns right (negative change in angle), the motor distance increases (clockwise motor rotation)
-        //When robot turns left (positive change in angle), the motor distance decreases (anticlockwise motor rotation)
-        //Thus the distances must be negated.
-        double drive1_deltaAngle = -drive1_distance/DRIVE1_TRACKWIDTH;
-        double drive2_deltaAngle = -drive2_distance/DRIVE2_TRACKWIDTH;
-        double drive3_deltaAngle = -drive3_distance/DRIVE3_TRACKWIDTH;
-        //ANGLE SUM / (# OF MOTORS / 2)
-        double net_deltaAngle = (drive1_deltaAngle+drive2_deltaAngle+drive3_deltaAngle)/1.5;
+        //Calculate current heading angle. (Either using drive controllers or the IMU)
+        if (utilizeIMU) {
+            YawPitchRollAngles robotAngles = imu.getRobotYawPitchRollAngles();
+            double imuYaw = robotAngles.getYaw(AngleUnit.RADIANS);
+            if(imuYaw < 0) {
+                imuYaw = MathUtils.addAngles(((2*Math.PI)+imuYaw), odo_intial_heading);
+            }
 
-        odo_heading_angle = MathUtils.addAngles(odo_heading_angle, net_deltaAngle);
+            else {
+                imuYaw = MathUtils.addAngles(imuYaw, odo_intial_heading);
+            }
+
+            odo_heading_angle = imuYaw;
+        }
+
+        else {
+            //When robot turns right (negative change in angle), the motor distance increases (clockwise motor rotation)
+            //When robot turns left (positive change in angle), the motor distance decreases (anticlockwise motor rotation)
+            //Thus the distances must be negated.
+            double drive1_deltaAngle = -drive1_distance/DRIVE1_TRACKWIDTH;
+            double drive2_deltaAngle = -drive2_distance/DRIVE2_TRACKWIDTH;
+            double drive3_deltaAngle = -drive3_distance/DRIVE3_TRACKWIDTH;
+            //ANGLE SUM / (# OF MOTORS / 2)
+            double net_deltaAngle = (drive1_deltaAngle+drive2_deltaAngle+drive3_deltaAngle)/1.5;
+
+            odo_heading_angle = MathUtils.addAngles(odo_heading_angle, net_deltaAngle);
+        }
 
         //TODO:--SECTION 2: COMPUTE ACTUAL LINEAR VEL. + ACCEL. & ACTUAL ANGULAR VEL. + ACCEL.
         //Rotational Motion
-
 
         //--SECTION 3: PREV VARIABLES UPDATED--
         drive1_prevPosition = drive1_position;
@@ -309,7 +373,114 @@ public class OmniDriveController {
         drive();
     }
 
-    public void targetCoordinates(double tx, double ty, double errorTolerance) {
+    public boolean applyTranslationalCorrection(double elapsedTime) {
+        //Returns true once the target has been reached in accordance to the tolerance. Returns false is otherwise.
+        Vector2d error = new Vector2d(0,0);
+        Vector2d correction;
+        boolean status = false;
+
+        //TODO: UPDATE ODOMETRY HERE?
+        //TODO: ADD IMU DATA FEED + KALMAN FILTER SYSTEM
+
+        //Assuming the odometry has been updated. For now.
+        translationController.setDeltaTime(elapsedTime);
+
+        error.sub(target_position, odo_position);
+        translationController.setCurrentVectorError(error);
+
+        if(error.length() > translationTolerance) {
+            correction = translationController.updateVectorPID();
+            setGlobalTargetLinearVelocity(correction);
+        }
+
+        else {
+            setGlobalTargetLinearVelocity(new Vector2d(0,0));
+            status = true;
+        }
+
+        computeVelocitiesThenDrive();
+        return status;
+    }
+
+    public boolean applyRotationalCorrection(double elapsedTime) {
+        //Returns true once the target has been reached in accordance to the tolerance. Returns false is otherwise.
+        double error;
+        double correction;
+        boolean status = false;
+
+        //TODO: UPDATE ODOMETRY HERE?
+        //TODO: ADD IMU DATA FEED + KALMAN FILTER SYSTEM
+
+        //Assuming the odometry has been updated. For now.
+        rotationController.setDeltaTime(elapsedTime);
+
+        error = -(target_heading - odo_heading_angle);
+        rotationController.setCurrentScalarError(error);
+
+        if(Math.abs(error) > rotationTolerance) {
+            correction = rotationController.updateScalarPID();
+            setTargetAngularVelocity(correction);
+        }
+
+        else {
+            setTargetAngularVelocity(0);
+            status = true;
+        }
+
+        //computeVelocitiesThenDrive();
+        return status;
+    }
+
+    public boolean[] applyMotionCorrection(double elapsedTime) {
+        //Returns true for the respective property once the target has been reached in accordance to the tolerance. Returns false is otherwise.
+        //status[0] -> translational motion
+        //status[1] -> rotational motion
+        boolean[] status = new boolean[]{false, false};
+        Vector2d transError = new Vector2d(0,0);
+        Vector2d transCorrection;
+        double rotError;
+        double rotCorrection;
+
+        //TODO: UPDATE ODOMETRY HERE?
+        //TODO: ADD IMU DATA FEED + KALMAN FILTER SYSTEM
+
+        //Assuming the odometry has been updated. For now.
+        translationController.setDeltaTime(elapsedTime);
+        rotationController.setDeltaTime(elapsedTime);
+
+        transError.sub(target_position, odo_position);
+        translationController.setCurrentVectorError(transError);
+        rotError = -(target_heading - odo_heading_angle);
+        rotationController.setCurrentScalarError(rotError);
+
+        //Tolerance check for translation
+        if(transError.length() > translationTolerance) {
+            transCorrection = translationController.updateVectorPID();
+            setGlobalTargetLinearVelocity(transCorrection);
+        }
+
+        else {
+            setGlobalTargetLinearVelocity(new Vector2d(0,0));
+            status[0] = true;
+        }
+
+        //Tolerance check for rotation
+        if(Math.abs(rotError) > rotationTolerance) {
+            rotCorrection = rotationController.updateScalarPID();
+            setTargetAngularVelocity(rotCorrection);
+        }
+
+        else {
+            setTargetAngularVelocity(0);
+            status[1] = true;
+        }
+
+        //computeVelocitiesThenDrive();
+        return status;
+    }
+
+
+    public void targetCoordinates(double tx, double ty, double errorTolerance, boolean utilizeIMU) {
         Vector2d target = new Vector2d(tx, ty);
         Vector2d error = new Vector2d(0,0);
         Vector2d correction;
@@ -323,9 +494,9 @@ public class OmniDriveController {
             elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
 
             error.sub(target, odo_position);
-            updateOdometry(elapsedTime);
-            motionController.setDeltaTime(elapsedTime);
-            motionController.setCurrentVectorError(error);
+            updateOdometry(elapsedTime, utilizeIMU);
+            translationController.setDeltaTime(elapsedTime);
+            translationController.setCurrentVectorError(error);
             //correction = motionController.updateVectorPID();
             //setGlobalTargetLinearVelocity(correction);
             computeVelocitiesThenDrive();

@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
 import javax.vecmath.Vector2d;
-import com.github.dummybotslammer.spacesaintsmppc.DriveControllers.OmniDriveController;
+import com.github.dummybotslammer.spacesaintsmppc.Controllers.OmniDriveController;
 
 import com.github.dummybotslammer.spacesaintsmppc.Utils.MathUtils;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
@@ -10,8 +10,8 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Blinker;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.Gyroscope;
 import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
@@ -23,7 +23,7 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
     private final int TICKS_PER_HDHEXMOTOR_REV = 560;
     private final int TICKS_PER_COREHEXMOTOR_REV = 288;
     private final double wheelDiameter = 0.09;
-    private final double stickMovementVectorScaleFactor = 0.2; //For: heading_velocity = scale * velocity (ms^-1)
+    private final double stickMovementVectorScaleFactor = 0.4; //For: heading_velocity = scale * velocity (ms^-1)
     private final double maxAngularVelocity = Math.PI/3;
 
     private Blinker control_Hub;
@@ -32,6 +32,8 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
     private DcMotorEx drive1;
     private DcMotorEx drive2;
     private DcMotorEx drive3;
+    private DcMotorEx intakeLift;
+    private Servo launcher;
     private OmniDriveController omnidrive;
 
     @Override
@@ -40,6 +42,8 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
         drive1 = hardwareMap.get(DcMotorEx.class, "drive1");
         drive2 = hardwareMap.get(DcMotorEx.class, "drive2");
         drive3 = hardwareMap.get(DcMotorEx.class, "drive3");
+        intakeLift = hardwareMap.get(DcMotorEx.class, "intakeLift");
+        launcher = hardwareMap.get(Servo.class, "launcher");
 
         imuParameters = new IMU.Parameters(
                 new RevHubOrientationOnRobot(
@@ -69,20 +73,31 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
         double imuYaw = robotAngles.getYaw(AngleUnit.RADIANS) + initialHeading;
 
         //MOTOR & ENCODER RESETS AND CONFIGS
+        launcher.setPosition(-1);
+
         drive1.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         drive2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         drive3.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        intakeLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 
         drive1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         drive2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         drive3.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        intakeLift.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         drive1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         drive2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         drive3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        intakeLift.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        omnidrive = new OmniDriveController(drive1, drive2, drive3, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_COREHEXMOTOR_REV, wheelDiameter);
-        omnidrive.setOdoHeadingAngle(Math.PI/2);
+        omnidrive = new OmniDriveController(drive1, drive2, drive3, imu, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_COREHEXMOTOR_REV, wheelDiameter);
+        //omnidrive.setOdoHeadingAngle(Math.PI/2);
+        omnidrive.setInitialHeading(Math.PI/2);
+        omnidrive.setTargetHeading(omnidrive.getInitialHeading());
+
+        omnidrive.translationController.setCoefficients(0.4, 0.0, 0.2);
+        omnidrive.rotationController.setCoefficients(3.0, 0.0, 0.8);
+
         waitForStart();
 
         while(opModeIsActive()) {
@@ -104,13 +119,43 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
             endElapsed = System.nanoTime();
             elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
 
+            //Launcher
+            if(gamepad1.x) {
+                launcher.setPosition(1);
+            }
+
+            //Intake Lift
+            if(gamepad1.a) {
+                intakeLift.setVelocity(2000);
+            }
+            else if(gamepad1.b) {
+                intakeLift.setVelocity(-2000);
+            }
+            else {
+                intakeLift.setVelocity(0);
+            }
+
+            omnidrive.updateOdometry(elapsedTime, true);
+
             stickVector.set(new double[]{leftStickX, leftStickY});
             stickVector.scale(stickMovementVectorScaleFactor);
-            omnidrive.setTargetAngularVelocity(angularVelocity);
-            omnidrive.setGlobalTargetLinearVelocity(stickVector);
+
+            /*
+            //Heading Controls & Drift Correction
+            omnidrive.setTargetHeading(MathUtils.addAngles(omnidrive.getHeadingAngle(), angularVelocity));
+            omnidrive.applyRotationalCorrection(elapsedTime);
+            */
+
+            if (Math.abs(angularVelocity) > 0) {
+                omnidrive.setTargetAngularVelocity(angularVelocity);
+                omnidrive.setTargetHeading(omnidrive.getHeadingAngle());
+            }
+            else { omnidrive.applyRotationalCorrection(elapsedTime); /*Drift Correction*/ }
+
+            //omnidrive.setGlobalTargetLinearVelocity(stickVector);
+            omnidrive.setRelativeTargetLinearVelocity(stickVector);
 
             omnidrive.computeVelocitiesThenDrive();
-            omnidrive.updateOdometry(elapsedTime);
 
             //DEBUG
             double[] t1 = {omnidrive.getTargetDriveVelocities()[0].x,omnidrive.getTargetDriveVelocities()[0].y};
@@ -135,7 +180,7 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
             telemetry.addData("Drive3 Vector Angle", Math.toDegrees(omnidrive.getTargetDriveVelocities()[0].angle(omnidrive.getUnitVectors()[0])));
             telemetry.addData("Robot Position", String.format("%f, %f", robotPosition.x, robotPosition.y));
             telemetry.addData("Robot Heading Angle (Encoders)", Math.toDegrees(omnidrive.getHeadingAngle()));
-            telemetry.addData("Robot Heading Angle (IMU)", Math.toDegrees(imuYaw));
+            telemetry.addData("Robot Heading Angle (IMU)", Math.toDegrees(omnidrive.getHeadingAngle()));
             telemetry.addData("Global X and Y Values", String.format("%f, %f", omnidrive.getGlobalTargetLinearVelocity().x, omnidrive.getGlobalTargetLinearVelocity().y));
             telemetry.update();
         }

@@ -178,7 +178,7 @@ public class PIDController {
         return correction;
     }
 
-    public Vector2d[] updateVectorPID() {
+    public Vector2d updateVectorPID() {
         vec_P = new Vector2d(current_vec_error);
         vec_P.scale(Kp);
 
@@ -198,6 +198,6 @@ public class PIDController {
         previous_I = current_I;
         previous_vec_error = new Vector2d(current_vec_error);
 
-        return new Vector2d[]{vec_correction, vec_P, vec_I, vec_D};
+        return vec_correction;
     }
 }

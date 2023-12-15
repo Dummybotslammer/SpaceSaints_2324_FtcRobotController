@@ -10,3 +10,10 @@ A. TRACK FOLLOW
 7. Pass ErrorVec into the Vector PID controller.
 8. Use the output to move the robot
 9. repeat until at point B
+
+ALGO METHOD:
+1. applyTranslationalCorrection
+2. applyRotationalCorrection
+3. setTargetPosition
+4. setTargetHeading
+5. 'Path' object

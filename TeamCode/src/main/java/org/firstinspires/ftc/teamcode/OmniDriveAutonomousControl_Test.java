@@ -1,23 +1,19 @@
 package org.firstinspires.ftc.teamcode;
 
 import javax.vecmath.Vector2d;
-import com.github.dummybotslammer.spacesaintsmppc.DriveControllers.OmniDriveController;
+import com.github.dummybotslammer.spacesaintsmppc.Controllers.OmniDriveController;
 
 import com.github.dummybotslammer.spacesaintsmppc.Utils.MathUtils;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Blinker;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
-import com.qualcomm.robotcore.hardware.Gyroscope;
 import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
-
-import java.util.Vector;
 
 @Autonomous(name="OmniBot Drivebase Autonomous Odometry Test")
 public class OmniDriveAutonomousControl_Test extends LinearOpMode {
@@ -46,8 +42,8 @@ public class OmniDriveAutonomousControl_Test extends LinearOpMode {
 
         imuParameters = new IMU.Parameters(
                 new RevHubOrientationOnRobot(
-                        RevHubOrientationOnRobot.LogoFacingDirection.UP,
-                        RevHubOrientationOnRobot.UsbFacingDirection.LEFT
+                        RevHubOrientationOnRobot.LogoFacingDirection.RIGHT,
+                        RevHubOrientationOnRobot.UsbFacingDirection.UP
                 )
         );
         imu.initialize(imuParameters);
@@ -65,11 +61,16 @@ public class OmniDriveAutonomousControl_Test extends LinearOpMode {
         double elapsedTime = (endElapsed - startElapsed)/(1000000000); //Converted to seconds
         Vector2d stickVector = new Vector2d(0, 0);
 
+        Vector2d target = new Vector2d(2.5, 1.0);
+        double targetAngle = Math.PI/2;
+
+        /*
         //Object for receiving the IMU angles:
         YawPitchRollAngles robotAngles;
         robotAngles = imu.getRobotYawPitchRollAngles();
         double initialHeading = Math.PI/2;
         double imuYaw = robotAngles.getYaw(AngleUnit.RADIANS) + initialHeading;
+         */
 
         //MOTOR & ENCODER RESETS AND CONFIGS
         drive1.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -84,68 +85,30 @@ public class OmniDriveAutonomousControl_Test extends LinearOpMode {
         drive2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         drive3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        omnidrive = new OmniDriveController(drive1, drive2, drive3, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_COREHEXMOTOR_REV, wheelDiameter);
-        omnidrive.setOdoHeadingAngle(Math.PI/2);
-        omnidrive.motionController.setCoefficients(0.4, 0.0, 0.2);
+        omnidrive = new OmniDriveController(drive1, drive2, drive3, imu, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_COREHEXMOTOR_REV, wheelDiameter);
+        omnidrive.setInitialHeading(Math.PI/2);
+        omnidrive.setTargetPosition(target);
+        omnidrive.setTargetHeading(targetAngle);
+        omnidrive.translationController.setCoefficients(0.4, 0.0, 0.2);
         omnidrive.rotationController.setCoefficients(0.8, 0.0, 0.4);
         waitForStart();
 
         while(opModeIsActive()) {
-            robotAngles = imu.getRobotYawPitchRollAngles();
-            imuYaw = robotAngles.getYaw(AngleUnit.RADIANS);
-            if(imuYaw < 0) {
-                imuYaw = MathUtils.addAngles(((2*Math.PI)+imuYaw), initialHeading);
-            }
-
-            else {
-                imuYaw = MathUtils.addAngles(imuYaw, initialHeading);
-            }
-
-            Vector2d target = new Vector2d(2.5, 0.0);
-            double targetAngle = Math.PI/2;
+            /*
             Vector2d error = new Vector2d(0,0);
             Vector2d correction = new Vector2d(0,0);
             double rotCorrection = 0.0;
             double rotError = 0.0;
             boolean targetReached = false;
             //omnidrive.targetCoordinates(1, 1, 0.1);
+            */
+
             endElapsed = System.nanoTime();
             elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
 
-            Vector2d deriv = new Vector2d(0,0);
-
-            omnidrive.updateOdometry(elapsedTime);
-            omnidrive.setOdoHeadingAngle(imuYaw);
-            omnidrive.motionController.setDeltaTime(elapsedTime);
-            omnidrive.rotationController.setDeltaTime(elapsedTime);
-
-            rotError = -(targetAngle - omnidrive.getHeadingAngle());
-            error.sub(target, omnidrive.getPosition());
-
-            omnidrive.motionController.setCurrentVectorError(error);
-            omnidrive.rotationController.setCurrentScalarError(rotError);
-
-            if(Math.toDegrees(Math.abs(rotError)) > 0.25) {
-                rotCorrection = omnidrive.rotationController.updateScalarPID();
-                omnidrive.setTargetAngularVelocity(rotCorrection);
-            }
-
-            else {
-                omnidrive.setTargetAngularVelocity(0);
-            }
-
-            if(error.length() > 0.02) {
-                Vector2d[] temp = omnidrive.motionController.updateVectorPID();
-                correction = temp[0];
-                deriv = temp[3];
-                //correction.scale(Math.min(correction.length(), maxDriveSpeed)/maxDriveSpeed);
-                omnidrive.setGlobalTargetLinearVelocity(correction);
-            }
-
-            else {
-                omnidrive.setGlobalTargetLinearVelocity(new Vector2d(0,0));
-                targetReached = true;
-            }
+            omnidrive.updateOdometry(elapsedTime, true);
+            omnidrive.applyTranslationalCorrection(elapsedTime);
+            omnidrive.applyRotationalCorrection(elapsedTime);
 
             omnidrive.computeVelocitiesThenDrive();
 
@@ -168,14 +131,13 @@ public class OmniDriveAutonomousControl_Test extends LinearOpMode {
             telemetry.addData("Drive2 Vector Angle", Math.toDegrees(omnidrive.getTargetDriveVelocities()[0].angle(omnidrive.getUnitVectors()[0])));
             telemetry.addData("Drive3 Vector Angle", Math.toDegrees(omnidrive.getTargetDriveVelocities()[0].angle(omnidrive.getUnitVectors()[0])));
             telemetry.addData("Robot Position", String.format("%f, %f", robotPosition.x, robotPosition.y));
-            telemetry.addData("Robot Heading Angle", Math.toDegrees(imuYaw)); //omnidrive.getHeadingAngle()
-            telemetry.addData("Robot Heading Error", rotError);
+            telemetry.addData("Robot Heading Angle", omnidrive.getHeadingAngle()); //omnidrive.getHeadingAngle()
+            //telemetry.addData("Robot Heading Error", rotError);
             telemetry.addData("Robot Angular Velocity", Math.toDegrees(omnidrive.getTargetAngularVelocity()));
             telemetry.addData("Global X and Y Values", String.format("%f, %f", omnidrive.getGlobalTargetLinearVelocity().x, omnidrive.getGlobalTargetLinearVelocity().y));
-            telemetry.addData("Robot Correction Vector", String.format("%f, %f", correction.x, correction.y));
-            telemetry.addData("Robot Error Vector", String.format("%f, %f", error.x, error.y));
-            telemetry.addData("Robot Deriv Vector", String.format("%f, %f", deriv.x, deriv.y));
-            telemetry.addData("Reached Target?", targetReached);
+            telemetry.addData("Robot Correction Vector", String.format("%f, %f", omnidrive.translationController.getVectorCorrection().x, omnidrive.translationController.getVectorCorrection().y));
+            //telemetry.addData("Robot Error Vector", String.format("%f, %f", error.x, error.y));
+            //telemetry.addData("Reached Target?", targetReached);
             telemetry.update();
         }
     }
