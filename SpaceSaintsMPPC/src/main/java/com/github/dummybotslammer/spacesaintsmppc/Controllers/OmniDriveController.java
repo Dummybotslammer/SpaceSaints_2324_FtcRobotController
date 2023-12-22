@@ -2,6 +2,7 @@ package com.github.dummybotslammer.spacesaintsmppc.Controllers;
 
 import com.github.dummybotslammer.spacesaintsmppc.Utils.MathUtils;
 import com.github.dummybotslammer.spacesaintsmppc.Utils.PIDController;
+import com.github.dummybotslammer.spacesaintsmppc.Utils.MotionPath;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.IMU;
 
@@ -41,9 +42,11 @@ public class OmniDriveController {
     private double DRIVE1_TRACKWIDTH = Math.sqrt(132299.878225)/10/100; //mm -> cm -> m
     private double DRIVE2_TRACKWIDTH = Math.sqrt(132299.878225)/10/100; //mm -> cm -> m
     private double DRIVE3_TRACKWIDTH = 363.731/10/100; //mm -> cm -> m
-    private int TICKS_PER_DRIVE1_REV = 28;
-    private int TICKS_PER_DRIVE2_REV = 28;
-    private int TICKS_PER_DRIVE3_REV = 28;
+
+    //2 Stage Ultraplanetary Gearboxes: 4:1 & 5:1 (Total Nominal: 20:1)
+    private int TICKS_PER_DRIVE1_REV = (int) (2.0*28.0*18.9);
+    private int TICKS_PER_DRIVE2_REV = (int) (2.0*28.0*18.9);
+    private int TICKS_PER_DRIVE3_REV = (int) (2.0*28.0*18.9);
     //Unit Vectors with length 1.
     private Vector2d DRIVE1_UNIT_VECTOR = new Vector2d(0.5, Math.sqrt(0.75));
     private Vector2d DRIVE2_UNIT_VECTOR = new Vector2d(0.5, -Math.sqrt(0.75));
@@ -414,7 +417,10 @@ public class OmniDriveController {
         //Assuming the odometry has been updated. For now.
         rotationController.setDeltaTime(elapsedTime);
 
-        error = -(target_heading - odo_heading_angle);
+        double e1 = -MathUtils.subAngles(target_heading, odo_heading_angle); //Correction in CCW
+        double e2 = MathUtils.subAngles(odo_heading_angle, target_heading); //Correction in CW
+        //Picks either CCW or CW based on the shortest magnitude. Defaults to CW direction is e1 == e2.
+        error = Math.abs(e1)<Math.abs(e2) ? e1:e2;
         rotationController.setCurrentScalarError(error);
 
         if(Math.abs(error) > rotationTolerance) {
@@ -479,30 +485,25 @@ public class OmniDriveController {
         return status;
     }
 
+    public void trackMotionPath(MotionPath path, double elapsedTime) {
+        /*translationController.setCoefficients(0.4, 0.0, 0.2);
+        rotationController.setCoefficients(0.8, 0.0, 0.4);*/
+        updateOdometry(elapsedTime, true);
 
-    public void targetCoordinates(double tx, double ty, double errorTolerance, boolean utilizeIMU) {
-        Vector2d target = new Vector2d(tx, ty);
-        Vector2d error = new Vector2d(0,0);
-        Vector2d correction;
+        setTargetPosition(path.getCurrentPosition());
+        setTargetHeading(path.getCurrentHeading());
+        boolean rstate = applyRotationalCorrection(elapsedTime);
+        boolean tstate = applyTranslationalCorrection(elapsedTime);
 
-        double startElapsed = System.nanoTime();
-        double endElapsed = System.nanoTime();
-        double elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
+        //Applying corrective motion
+        computeVelocitiesThenDrive();
 
-        while(error.length() > errorTolerance) {
-            endElapsed = System.nanoTime();
-            elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
-
-            error.sub(target, odo_position);
-            updateOdometry(elapsedTime, utilizeIMU);
-            translationController.setDeltaTime(elapsedTime);
-            translationController.setCurrentVectorError(error);
-            //correction = motionController.updateVectorPID();
-            //setGlobalTargetLinearVelocity(correction);
-            computeVelocitiesThenDrive();
+        //Indicates that the robot has reached its current target pose.
+        if(rstate && tstate) {
+            path.advancePose();
+            setTargetPosition(path.getCurrentPosition());
+            setTargetHeading(path.getCurrentHeading());
         }
-
-        setGlobalTargetLinearVelocity(new Vector2d(0,0));
     }
 
 }

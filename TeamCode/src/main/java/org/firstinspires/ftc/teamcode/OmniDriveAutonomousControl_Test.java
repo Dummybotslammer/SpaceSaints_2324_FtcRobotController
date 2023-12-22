@@ -4,6 +4,7 @@ import javax.vecmath.Vector2d;
 import com.github.dummybotslammer.spacesaintsmppc.Controllers.OmniDriveController;
 
 import com.github.dummybotslammer.spacesaintsmppc.Utils.MathUtils;
+import com.github.dummybotslammer.spacesaintsmppc.Utils.MotionPath;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -19,7 +20,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 public class OmniDriveAutonomousControl_Test extends LinearOpMode {
     //All physical measurements are in SI units, unless stated otherwise, or being converted to motor/encoder ticks.
     //Angles are all in radians unless specified otherwise as well.
-    private final int TICKS_PER_HDHEXMOTOR_REV = 560;
+    private final int TICKS_PER_HDHEXMOTOR_REV = (int) (2.0*28.0*18.9); //2 Stage Ultraplanetary Gearboxes: 4:1 & 5:1 (Total Nominal: 20:1)
     private final int TICKS_PER_COREHEXMOTOR_REV = 288;
     private final double wheelDiameter = 0.09;
     private final double stickMovementVectorScaleFactor = 0.2; //For: heading_velocity = scale * velocity (ms^-1)
@@ -64,6 +65,21 @@ public class OmniDriveAutonomousControl_Test extends LinearOpMode {
         Vector2d target = new Vector2d(2.5, 1.0);
         double targetAngle = Math.PI/2;
 
+        MotionPath path = new MotionPath(
+                new Vector2d[]{
+                        new Vector2d(0.0, -0.55),
+                        new Vector2d(2.0, -0.55),
+                        new Vector2d(0.0, -0.55),
+                        /*new Vector2d(-0.40, 1.5),*/
+                },
+                new double[]{
+                        Math.PI/2,
+                        0,
+                        0,
+                        Math.PI/2,
+                }
+        );
+
         /*
         //Object for receiving the IMU angles:
         YawPitchRollAngles robotAngles;
@@ -85,12 +101,12 @@ public class OmniDriveAutonomousControl_Test extends LinearOpMode {
         drive2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         drive3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        omnidrive = new OmniDriveController(drive1, drive2, drive3, imu, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_COREHEXMOTOR_REV, wheelDiameter);
+        omnidrive = new OmniDriveController(drive1, drive2, drive3, imu, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, wheelDiameter);
         omnidrive.setInitialHeading(Math.PI/2);
-        omnidrive.setTargetPosition(target);
-        omnidrive.setTargetHeading(targetAngle);
-        omnidrive.translationController.setCoefficients(0.4, 0.0, 0.2);
-        omnidrive.rotationController.setCoefficients(0.8, 0.0, 0.4);
+        omnidrive.translationController.setCoefficients(0.2, 0.0, 0.15);
+        omnidrive.rotationController.setCoefficients(1.0, 0.0, 0.6);
+        omnidrive.setTranslationControllerTolerance(0.05);
+        omnidrive.setRotationControllerTolerance(Math.toRadians(5.0));
         waitForStart();
 
         while(opModeIsActive()) {
@@ -106,11 +122,7 @@ public class OmniDriveAutonomousControl_Test extends LinearOpMode {
             endElapsed = System.nanoTime();
             elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
 
-            omnidrive.updateOdometry(elapsedTime, true);
-            omnidrive.applyTranslationalCorrection(elapsedTime);
-            omnidrive.applyRotationalCorrection(elapsedTime);
-
-            omnidrive.computeVelocitiesThenDrive();
+            omnidrive.trackMotionPath(path, elapsedTime);
 
             //DEBUG
             double[] t1 = {omnidrive.getTargetDriveVelocities()[0].x,omnidrive.getTargetDriveVelocities()[0].y};

@@ -20,10 +20,10 @@ import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 public class OmniDriveJoyControl_Test extends LinearOpMode {
     //All physical measurements are in SI units, unless stated otherwise, or being converted to motor/encoder ticks.
     //Angles are all in radians unless specified otherwise as well.
-    private final int TICKS_PER_HDHEXMOTOR_REV = 560;
+    private final int TICKS_PER_HDHEXMOTOR_REV = (int) (2.0*28.0*18.9); //2 Stage Ultraplanetary Gearboxes: 4:1 & 5:1 (Total Nominal: 20:1)
     private final int TICKS_PER_COREHEXMOTOR_REV = 288;
     private final double wheelDiameter = 0.09;
-    private final double stickMovementVectorScaleFactor = 0.4; //For: heading_velocity = scale * velocity (ms^-1)
+    private final double stickMovementVectorScaleFactor = 0.2; //For: heading_velocity = scale * velocity (ms^-1)
     private final double maxAngularVelocity = Math.PI/3;
 
     private Blinker control_Hub;
@@ -90,13 +90,13 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
         drive3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         intakeLift.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        omnidrive = new OmniDriveController(drive1, drive2, drive3, imu, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_COREHEXMOTOR_REV, wheelDiameter);
+        omnidrive = new OmniDriveController(drive1, drive2, drive3, imu, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, wheelDiameter);
         //omnidrive.setOdoHeadingAngle(Math.PI/2);
         omnidrive.setInitialHeading(Math.PI/2);
         omnidrive.setTargetHeading(omnidrive.getInitialHeading());
 
         omnidrive.translationController.setCoefficients(0.4, 0.0, 0.2);
-        omnidrive.rotationController.setCoefficients(3.0, 0.0, 0.8);
+        omnidrive.rotationController.setCoefficients(1.8, 0.0, 1.0);
 
         waitForStart();
 
