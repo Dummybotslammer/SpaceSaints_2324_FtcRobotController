@@ -14,6 +14,9 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
+import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
 @Autonomous(name="OmniBot Drivebase Autonomous Odometry Test")
@@ -41,10 +44,17 @@ public class OmniDriveAutonomousControl_Test extends LinearOpMode {
         drive2 = hardwareMap.get(DcMotorEx.class, "drive2");
         drive3 = hardwareMap.get(DcMotorEx.class, "drive3");
 
-        imuParameters = new IMU.Parameters(
+        imuParameters = new IMU.Parameters( //Measurements taken from robot chassis.
                 new RevHubOrientationOnRobot(
-                        RevHubOrientationOnRobot.LogoFacingDirection.RIGHT,
-                        RevHubOrientationOnRobot.UsbFacingDirection.UP
+                        new Orientation(
+                                AxesReference.INTRINSIC,
+                                AxesOrder.ZYX,
+                                AngleUnit.DEGREES,
+                                -145,
+                                0,
+                                180,
+                                0  // acquisitionTime, not used
+                        )
                 )
         );
         imu.initialize(imuParameters);
@@ -71,12 +81,35 @@ public class OmniDriveAutonomousControl_Test extends LinearOpMode {
                         new Vector2d(2.0, -0.55),
                         new Vector2d(0.0, -0.55),
                         /*new Vector2d(-0.40, 1.5),*/
+                        new Vector2d(0.0, 0.75),
+                        new Vector2d(1.5, 0.75),
+                        new Vector2d(1.5, -0.55),
+                        new Vector2d(0.0, -0.55),
+
                 },
                 new double[]{
                         Math.PI/2,
                         0,
                         0,
                         Math.PI/2,
+                },
+                new double[] {
+                        0.01,
+                        0.01,
+                        0.01,
+                        0.2,
+                        0.2,
+                        0.2,
+                        0.01,
+                },
+                new double[] {
+                        Math.toRadians(2.5),
+                        Math.toRadians(2.5),
+                        Math.toRadians(10.0),
+                        Math.toRadians(10.0),
+                        Math.toRadians(10.0),
+                        Math.toRadians(10.0),
+                        Math.toRadians(2.5),
                 }
         );
 
@@ -103,7 +136,7 @@ public class OmniDriveAutonomousControl_Test extends LinearOpMode {
 
         omnidrive = new OmniDriveController(drive1, drive2, drive3, imu, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, wheelDiameter);
         omnidrive.setInitialHeading(Math.PI/2);
-        omnidrive.translationController.setCoefficients(0.2, 0.0, 0.15);
+        omnidrive.translationController.setCoefficients(0.3, 0.0, 0.15);
         omnidrive.rotationController.setCoefficients(1.0, 0.0, 0.6);
         omnidrive.setTranslationControllerTolerance(0.05);
         omnidrive.setRotationControllerTolerance(Math.toRadians(5.0));

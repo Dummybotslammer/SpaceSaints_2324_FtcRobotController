@@ -7,6 +7,8 @@ public class MotionPath {
     //Each pose is a pair consisting of a position and heading.
     private Vector2d[] positions;
     private double[] headings;
+    private double[] rTolerances;
+    private double[] tTolerances;
     private int pointer;
 
     //Constructors
@@ -15,19 +17,30 @@ public class MotionPath {
         pointer = 0;
     }
 
-    public MotionPath(Vector2d[] pos, double[] heading) {
+    public MotionPath(Vector2d[] pos, double[] heading, double[] tTol, double[] rTol) {
         positions = pos;
         headings = heading;
+        tTolerances = tTol;
+        rTolerances = rTol;
+
         pointer = 0;
     }
 
     //Getters
     public Vector2d getCurrentPosition() {
-        return positions[pointer];
+        return positions[Math.min(pointer, positions.length-1)];
     }
 
     public double getCurrentHeading() {
-        return headings[pointer];
+        return headings[Math.min(pointer, headings.length-1)];
+    }
+
+    public double getCurrentRotationTolerance() {
+        return rTolerances[Math.min(pointer, rTolerances.length-1)];
+    }
+
+    public double getCurrentTranslationTolerance() {
+        return tTolerances[Math.min(pointer, tTolerances.length-1)];
     }
 
     public int getPosePointer() {
@@ -41,7 +54,7 @@ public class MotionPath {
 
     //Methods
     public void advancePose() {
-        if (pointer >= positions.length-1 || pointer >= headings.length-1) { return; }
+        //if (pointer >= positions.length-1 || pointer >= headings.length-1) { return; }
         pointer++;
     }
 }

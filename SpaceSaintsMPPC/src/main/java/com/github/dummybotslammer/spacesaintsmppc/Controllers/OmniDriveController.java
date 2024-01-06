@@ -501,6 +501,9 @@ public class OmniDriveController {
         //Indicates that the robot has reached its current target pose.
         if(rstate && tstate) {
             path.advancePose();
+
+            setTranslationControllerTolerance(path.getCurrentTranslationTolerance());
+            setRotationControllerTolerance(path.getCurrentRotationTolerance());
             setTargetPosition(path.getCurrentPosition());
             setTargetHeading(path.getCurrentHeading());
         }
