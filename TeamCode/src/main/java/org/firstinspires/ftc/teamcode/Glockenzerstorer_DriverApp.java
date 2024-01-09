@@ -3,6 +3,8 @@ package org.firstinspires.ftc.teamcode;
 import com.github.dummybotslammer.spacesaintsmppc.Controllers.DcMotorExController;
 import com.github.dummybotslammer.spacesaintsmppc.Controllers.OmniDriveController;
 import com.github.dummybotslammer.spacesaintsmppc.Utils.StateMachine;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.*;
+
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -24,9 +26,6 @@ import javax.vecmath.Vector2d;
 public class Glockenzerstorer_DriverApp extends LinearOpMode {
     //All physical measurements are in SI units, unless stated otherwise, or being converted to motor/encoder ticks.
     //Angles are all in radians unless specified otherwise as well.
-    private final int TICKS_PER_HDHEXMOTOR_REV = (int) (2.0*28.0*18.9); //2 Stage Ultraplanetary Gearboxes: 4:1 & 5:1 (Total Nominal: 20:1)
-    private final int TICKS_PER_COREHEXMOTOR_REV = 288;
-    private final double wheelDiameter = 0.09;
     private final double stickMovementVectorScaleFactor = 0.2; //For: heading_velocity = scale * velocity (ms^-1)
     private final double maxAngularVelocity = Math.PI/3;
 
@@ -112,14 +111,14 @@ public class Glockenzerstorer_DriverApp extends LinearOpMode {
         drive3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
 
-        outtakePivot.setPosition(0.5);
+        outtakePivot.setPosition(OUTTAKE_POCKET_REST_POSITION);
 
-        omnidrive = new OmniDriveController(drive1, drive2, drive3, imu, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, wheelDiameter);
+        omnidrive = new OmniDriveController(drive1, drive2, drive3, imu, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, WHEEL_DIAMETER);
         omnidrive.setInitialHeading(Math.PI/2);
         omnidrive.setTargetHeading(omnidrive.getInitialHeading());
 
         omnidrive.translationController.setCoefficients(0.4, 0.0, 0.2);
-        omnidrive.rotationController.setCoefficients(1.4, 0.0, 1.3);
+        omnidrive.rotationController.setCoefficients(1.4, 0.0, 1.4);
 
         waitForStart();
 
@@ -140,14 +139,25 @@ public class Glockenzerstorer_DriverApp extends LinearOpMode {
             if(gamepad1.left_bumper && gamepad1.right_bumper) { launcher.setPosition(1); }
 
             //Linear Slide
-            if (states.highToggle(gamepad1.dpad_up, 2)) { DcMotorExController.togglePosition(lift, 0, -DcMotorExController.metersToTicks(0.25, 0.05496, TICKS_PER_HDHEXMOTOR_REV)); }
-            else if ( states.highToggle(gamepad1.dpad_down, 3)) {}
+            if (states.highToggle(gamepad1.dpad_up, 2)) {
+                states.incrementSequence(0);
+                if (states.getSequence(0) > LIFT_EXTENSION_POSITIONS.length-1) {
+                    states.setSequence(LIFT_EXTENSION_POSITIONS.length-1, 0);
+                }
+            }
+            else if (states.highToggle(gamepad1.dpad_down, 3)) {
+                states.decrementSequence(0);
+                if (states.getSequence(0) < 0) {
+                    states.setSequence(0, 0);
+                }
+            }
+            lift.setTargetPosition( LIFT_EXTENSION_POSITIONS[states.getSequence(0)] );
 
             //Intake Feeder
             if (states.highToggle(gamepad1.y, 0)) { DcMotorExController.togglePower(intakeFeeder, 1.0, 0.0); }
 
             //Outtake Pocket Pivot
-            if (states.highToggle(gamepad1.x, 1)) { DcMotorExController.toggleServoPosition(outtakePivot, 0.5, 0.95); }
+            if (states.highToggle(gamepad1.x, 1)) { DcMotorExController.toggleServoPosition(outtakePivot, OUTTAKE_POCKET_REST_POSITION, OUTTAKE_POCKET_DEPOSIT_POSITION); }
 
             //Odometry Loop
             omnidrive.updateOdometry(elapsedTime, true);

@@ -102,4 +102,8 @@ public final class MathUtils {
         double dot = vec.dot(ds);
         return dot;
     }
+
+    public static int metersToTicks(double meters, double wheeldiameter, int ticksPerRev) {
+        return (int)((meters/(Math.PI*wheeldiameter)) * ticksPerRev);
+    }
 }

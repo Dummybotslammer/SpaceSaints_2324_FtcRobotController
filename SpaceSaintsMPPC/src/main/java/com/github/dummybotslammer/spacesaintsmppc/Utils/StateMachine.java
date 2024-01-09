@@ -44,11 +44,11 @@ public class StateMachine {
         else { prevstates[i] = state; return false; }
     }
 
-    public int incrementSequences(int index) {
+    public int incrementSequence(int index) {
         return sequences[Math.min(index, sequences.length-1)]++;
     }
 
-    public int decrementSequences(int index) {
+    public int decrementSequence(int index) {
         return sequences[Math.min(index, sequences.length-1)]--;
     }
 }

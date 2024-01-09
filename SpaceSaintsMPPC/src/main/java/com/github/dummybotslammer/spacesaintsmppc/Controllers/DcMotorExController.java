@@ -64,8 +64,4 @@ public class DcMotorExController {
             m.setTargetPosition(pos1);
         }
     }
-
-    public static int metersToTicks(double meters, double wheeldiameter, int ticksPerRev) {
-        return (int)((meters/(Math.PI*wheeldiameter)) * ticksPerRev);
-    }
 }

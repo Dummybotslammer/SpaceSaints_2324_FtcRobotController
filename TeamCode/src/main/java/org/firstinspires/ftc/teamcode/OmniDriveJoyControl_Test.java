@@ -162,7 +162,7 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
             if (gamepad1.dpad_up) {
                 lift.setPower(1.0);
                 //DcMotorExController.togglePosition(lift, 0, (int)((0.4/(Math.PI*0.05496)) * TICKS_PER_HDHEXMOTOR_REV));
-                DcMotorExController.togglePosition(lift, 0, -DcMotorExController.metersToTicks(0.25, 0.05496, TICKS_PER_HDHEXMOTOR_REV));
+                DcMotorExController.togglePosition(lift, 0, -MathUtils.metersToTicks(0.25, 0.05496, TICKS_PER_HDHEXMOTOR_REV));
             }
 
             //Intake Feeder
