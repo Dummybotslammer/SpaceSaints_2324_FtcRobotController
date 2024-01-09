@@ -1,11 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
-import javax.vecmath.Vector2d;
-
 import com.github.dummybotslammer.spacesaintsmppc.Controllers.DcMotorExController;
 import com.github.dummybotslammer.spacesaintsmppc.Controllers.OmniDriveController;
-
-import com.github.dummybotslammer.spacesaintsmppc.Utils.MathUtils;
+import com.github.dummybotslammer.spacesaintsmppc.Utils.StateMachine;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -20,10 +17,11 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
-import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 
-@TeleOp(name="OmniBot Drivebase Joystick Control Test")
-public class OmniDriveJoyControl_Test extends LinearOpMode {
+import javax.vecmath.Vector2d;
+
+@TeleOp(name="Glockenzerstorer2324 - DriverApp")
+public class Glockenzerstorer_DriverApp extends LinearOpMode {
     //All physical measurements are in SI units, unless stated otherwise, or being converted to motor/encoder ticks.
     //Angles are all in radians unless specified otherwise as well.
     private final int TICKS_PER_HDHEXMOTOR_REV = (int) (2.0*28.0*18.9); //2 Stage Ultraplanetary Gearboxes: 4:1 & 5:1 (Total Nominal: 20:1)
@@ -40,11 +38,11 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
     private DcMotorEx drive3;
 
     private DcMotorEx lift;
-    private DcMotorSimple intakeFeederR;
-    private DcMotorSimple intakeFeederL;
+    private DcMotorSimple intakeFeeder;
     private Servo launcher;
     private Servo outtakePivot;
     private OmniDriveController omnidrive;
+    private StateMachine states = new StateMachine();
 
     @Override
     public void runOpMode() {
@@ -53,8 +51,7 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
         drive2 = hardwareMap.get(DcMotorEx.class, "drive2");
         drive3 = hardwareMap.get(DcMotorEx.class, "drive3");
         lift = hardwareMap.get(DcMotorEx.class, "lift");
-        intakeFeederR = hardwareMap.get(DcMotorSimple.class, "intakeFeederR");
-        intakeFeederL = hardwareMap.get(DcMotorSimple.class, "intakeFeederL");
+        intakeFeeder = hardwareMap.get(DcMotorSimple.class, "intakeFeederL");
         launcher = hardwareMap.get(Servo.class, "launcher");
         outtakePivot = hardwareMap.get(Servo.class, "outtakePivot");
 
@@ -74,23 +71,25 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
         imu.initialize(imuParameters);
         imu.resetYaw();
 
+        states.setPrevStates(new boolean[] {
+                false, //#0 - Intake Feeder
+                false, //#1 - Outtake Pocket Pivot
+                false, //#2 - Lift (Up)
+                false, //#3 - Lift (Down)
+        });
+
+        states.setSequences(new int[] {
+                0, //#0 - Lift Stage Sequence
+        });
+
         telemetry.addData("Status", "Running");
 
         //RUNTIME VARIABLES
-        double leftStickX;
-        double leftStickY;
-        double rightStickX;
-        double angularVelocity;
+        double leftStickX, leftStickY, rightStickX, angularVelocity;
         double startElapsed = System.nanoTime();
         double endElapsed = System.nanoTime();
         double elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9)); //Converted to seconds
         Vector2d stickVector = new Vector2d(0, 0);
-
-        //Object for receiving the IMU angles:
-        YawPitchRollAngles robotAngles;
-        robotAngles = imu.getRobotYawPitchRollAngles();
-        double initialHeading = Math.PI/2;
-        double imuYaw = robotAngles.getYaw(AngleUnit.RADIANS) + initialHeading;
 
         //MOTOR & ENCODER RESETS AND CONFIGS
         launcher.setPosition(-1);
@@ -106,6 +105,7 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
         lift.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         lift.setTargetPosition(0);
+        lift.setPower(1.0);
 
         drive1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         drive2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -115,93 +115,61 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
         outtakePivot.setPosition(0.5);
 
         omnidrive = new OmniDriveController(drive1, drive2, drive3, imu, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, wheelDiameter);
-        //omnidrive.setOdoHeadingAngle(Math.PI/2);
         omnidrive.setInitialHeading(Math.PI/2);
         omnidrive.setTargetHeading(omnidrive.getInitialHeading());
 
         omnidrive.translationController.setCoefficients(0.4, 0.0, 0.2);
-        omnidrive.rotationController.setCoefficients(1.8, 0.0, 1.4);
+        omnidrive.rotationController.setCoefficients(1.4, 0.0, 1.3);
 
         waitForStart();
 
         while(opModeIsActive()) {
-            robotAngles = imu.getRobotYawPitchRollAngles();
-            imuYaw = robotAngles.getYaw(AngleUnit.RADIANS);
-            if(imuYaw < 0) {
-                imuYaw = MathUtils.addAngles(((2*Math.PI)+imuYaw), initialHeading);
-            }
-
-            else {
-                imuYaw = MathUtils.addAngles(imuYaw, initialHeading);
-            }
-
+            //Input Processing
             leftStickX = gamepad1.left_stick_x;
             leftStickY = -gamepad1.left_stick_y;
             rightStickX = gamepad1.right_stick_x;
             angularVelocity = maxAngularVelocity*rightStickX;
 
+            stickVector.set(new double[]{leftStickX, leftStickY});
+            stickVector.scale(stickMovementVectorScaleFactor);
+
             endElapsed = System.nanoTime();
             elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
 
             //Launcher
-            if(gamepad1.x) {
-                launcher.setPosition(1);
-            }
+            if(gamepad1.left_bumper && gamepad1.right_bumper) { launcher.setPosition(1); }
 
-            //Intake Lift
-            /*
-            if(gamepad1.dpad_up) {
-                lift.setVelocity(2000);
-            }
-            else if(gamepad1.dpad_down) {
-                lift.setVelocity(-2000);
-            }
-            else {
-                lift.setVelocity(0);
-            } */
-            if (gamepad1.dpad_up) {
-                lift.setPower(1.0);
-                //DcMotorExController.togglePosition(lift, 0, (int)((0.4/(Math.PI*0.05496)) * TICKS_PER_HDHEXMOTOR_REV));
-                DcMotorExController.togglePosition(lift, 0, -DcMotorExController.metersToTicks(0.25, 0.05496, TICKS_PER_HDHEXMOTOR_REV));
-            }
+            //Linear Slide
+            if (states.highToggle(gamepad1.dpad_up, 2)) { DcMotorExController.togglePosition(lift, 0, -DcMotorExController.metersToTicks(0.25, 0.05496, TICKS_PER_HDHEXMOTOR_REV)); }
+            else if ( states.highToggle(gamepad1.dpad_down, 3)) {}
 
             //Intake Feeder
-            if (gamepad1.y) {
-                //DcMotorExController.togglePower(intakeFeederR, 1.0, 0.0);
-                DcMotorExController.togglePower(intakeFeederL, 1.0, 0.0);
-            }
+            if (states.highToggle(gamepad1.y, 0)) { DcMotorExController.togglePower(intakeFeeder, 1.0, 0.0); }
 
             //Outtake Pocket Pivot
-            if (gamepad1.x) { DcMotorExController.toggleServoPosition(outtakePivot, 0.5, 0.95); }
+            if (states.highToggle(gamepad1.x, 1)) { DcMotorExController.toggleServoPosition(outtakePivot, 0.5, 0.95); }
 
+            //Odometry Loop
             omnidrive.updateOdometry(elapsedTime, true);
 
-            stickVector.set(new double[]{leftStickX, leftStickY});
-            stickVector.scale(stickMovementVectorScaleFactor);
-
-            /*
             //Heading Controls & Drift Correction
-            omnidrive.setTargetHeading(MathUtils.addAngles(omnidrive.getHeadingAngle(), angularVelocity));
-            omnidrive.applyRotationalCorrection(elapsedTime);
-            */
-
             if (Math.abs(angularVelocity) > 0) {
                 omnidrive.setTargetAngularVelocity(angularVelocity);
                 omnidrive.setTargetHeading(omnidrive.getHeadingAngle());
             }
             else { omnidrive.applyRotationalCorrection(elapsedTime); /*Drift Correction*/ }
 
-            //omnidrive.setGlobalTargetLinearVelocity(stickVector);
+            //Drive Controls
             omnidrive.setRelativeTargetLinearVelocity(stickVector);
             omnidrive.computeVelocitiesThenDrive();
 
-            //DEBUG
+            startElapsed = System.nanoTime();
+
+            //DEBUG//
             double[] t1 = {omnidrive.getTargetDriveVelocities()[0].x,omnidrive.getTargetDriveVelocities()[0].y};
             double[] t2 = {omnidrive.getTargetDriveVelocities()[1].x,omnidrive.getTargetDriveVelocities()[1].y};
             double[] t3 = {omnidrive.getTargetDriveVelocities()[2].x,omnidrive.getTargetDriveVelocities()[2].y};
             Vector2d robotPosition = omnidrive.getPosition();
-
-            startElapsed = System.nanoTime();
 
             telemetry.addData("Left Stick X", leftStickX);
             telemetry.addData("Left Stick Y", leftStickY);

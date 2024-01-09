@@ -60,12 +60,12 @@ public class DcMotorExController {
             m.setTargetPosition(pos2);
         }
 
-        else {
+        else if (m.getTargetPosition() == pos2) {
             m.setTargetPosition(pos1);
         }
     }
 
     public static int metersToTicks(double meters, double wheeldiameter, int ticksPerRev) {
-        return (int)(meters/(Math.PI*wheeldiameter) * ticksPerRev);
+        return (int)((meters/(Math.PI*wheeldiameter)) * ticksPerRev);
     }
 }
