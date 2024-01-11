@@ -1,5 +1,11 @@
 package org.firstinspires.ftc.teamcode;
 
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.AUTONOMOUS_HEADING_TOLERANCE_LOOSE;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.AUTONOMOUS_HEADING_TOLERANCE_TIGHT;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.OUTTAKE_POCKET_REST_POSITION;
+
 import com.github.dummybotslammer.spacesaintsmppc.Controllers.OmniDriveController;
 import com.github.dummybotslammer.spacesaintsmppc.Utils.MotionPath;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
@@ -8,7 +14,9 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.Blinker;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
@@ -33,6 +41,11 @@ public class Glockenzerstorer_Auto_BLUERight extends LinearOpMode {
     private DcMotorEx drive1;
     private DcMotorEx drive2;
     private DcMotorEx drive3;
+
+    private DcMotorEx lift;
+    private DcMotorSimple intakeFeeder;
+    private Servo launcher;
+    private Servo outtakePivot;
     private OmniDriveController omnidrive;
 
     @Override
@@ -41,6 +54,10 @@ public class Glockenzerstorer_Auto_BLUERight extends LinearOpMode {
         drive1 = hardwareMap.get(DcMotorEx.class, "drive1");
         drive2 = hardwareMap.get(DcMotorEx.class, "drive2");
         drive3 = hardwareMap.get(DcMotorEx.class, "drive3");
+        lift = hardwareMap.get(DcMotorEx.class, "lift");
+        intakeFeeder = hardwareMap.get(DcMotorSimple.class, "intakeFeederL");
+        launcher = hardwareMap.get(Servo.class, "launcher");
+        outtakePivot = hardwareMap.get(Servo.class, "outtakePivot");
 
         imuParameters = new IMU.Parameters( //Measurements taken from robot chassis.
                 new RevHubOrientationOnRobot(
@@ -73,64 +90,47 @@ public class Glockenzerstorer_Auto_BLUERight extends LinearOpMode {
         Vector2d target = new Vector2d(2.5, 1.0);
         double targetAngle = Math.PI/2;
 
-        MotionPath path = new MotionPath(
-                new Vector2d[]{
-                        new Vector2d(0.0, -0.55),
-                        new Vector2d(2.0, -0.55),
-                        new Vector2d(0.0, -0.55),
-                        /*new Vector2d(-0.40, 1.5),*/
-                        new Vector2d(0.0, 0.75),
-                        new Vector2d(1.5, 0.75),
-                        new Vector2d(1.5, -0.55),
-                        new Vector2d(0.0, -0.55),
+        MotionPath path = new MotionPath();
+        path.setExMotors( new DcMotorEx[] {
+                lift,
+        } );
+        path.setSimpleMotors( new DcMotorSimple[] {
+                intakeFeeder,
+        } );
 
-                },
-                new double[]{
-                        Math.PI/2,
-                        0,
-                        0,
-                        Math.PI/2,
-                },
-                new double[] {
-                        0.01,
-                        0.01,
-                        0.01,
-                        0.2,
-                        0.2,
-                        0.2,
-                        0.01,
-                },
-                new double[] {
-                        Math.toRadians(2.5),
-                        Math.toRadians(2.5),
-                        Math.toRadians(10.0),
-                        Math.toRadians(10.0),
-                        Math.toRadians(10.0),
-                        Math.toRadians(10.0),
-                        Math.toRadians(2.5),
-                }
-        );
-
-        /*
-        //Object for receiving the IMU angles:
-        YawPitchRollAngles robotAngles;
-        robotAngles = imu.getRobotYawPitchRollAngles();
-        double initialHeading = Math.PI/2;
-        double imuYaw = robotAngles.getYaw(AngleUnit.RADIANS) + initialHeading;
-         */
+        path.setInstructions( new double[][] {
+                {'p', 0.0, -0.55, Math.PI/2, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+                {'p', 2.0, -0.55, 0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+                {'p', 0.0, -0.55, 0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                //new Vector2d(-0.40, 1.5),
+                {'p', 0.0, 0.75, Math.PI/2, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                {'p', 1.5, 0.75, Math.PI/2, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                {'p', 1.5, -0.55, Math.PI/2, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                {'p', 0.0, -0.55, Math.PI/2, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+                } );
 
         //MOTOR & ENCODER RESETS AND CONFIGS
+        launcher.setPosition(-1);
+
         drive1.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         drive2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         drive3.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        lift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 
         drive1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         drive2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         drive3.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        lift.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        lift.setTargetPosition(0);
+        lift.setPower(1.0);
 
         drive1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         drive2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         drive3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        outtakePivot.setPosition(OUTTAKE_POCKET_REST_POSITION);
 
         omnidrive = new OmniDriveController(drive1, drive2, drive3, imu, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, wheelDiameter);
         omnidrive.setInitialHeading(Math.PI/2);
@@ -141,15 +141,6 @@ public class Glockenzerstorer_Auto_BLUERight extends LinearOpMode {
         waitForStart();
 
         while(opModeIsActive()) {
-            /*
-            Vector2d error = new Vector2d(0,0);
-            Vector2d correction = new Vector2d(0,0);
-            double rotCorrection = 0.0;
-            double rotError = 0.0;
-            boolean targetReached = false;
-            //omnidrive.targetCoordinates(1, 1, 0.1);
-            */
-
             endElapsed = System.nanoTime();
             elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
 

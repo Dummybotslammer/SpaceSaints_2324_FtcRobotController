@@ -1,5 +1,8 @@
 package com.github.dummybotslammer.spacesaintsmppc.Utils;
 
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+
 import javax.vecmath.Vector2d;
 
 public class MotionPath {
@@ -7,11 +10,9 @@ public class MotionPath {
     //Each pose is a pair consisting of a position and heading.
     //TODO: Turn the instruction array into a mnemonic based autonomous programming system. int [instruction code, param1, param2, param3]
     //TODO: Add interrupts (i.e. for camera detection)
-    private double instructions[][];
-    private Vector2d[] positions;
-    private double[] headings;
-    private double[] rTolerances;
-    private double[] tTolerances;
+    private double instructions[][]; //FORMAT: {INSTRUCTION CODE, PARAM1, PARAM2, PARAM 3, PARAM 4, PARAM 5, PARAM 6}
+    private DcMotorEx exmotors[];
+    private DcMotorSimple simplemotors[];
     private int pointer;
 
     //Constructors
@@ -20,44 +21,51 @@ public class MotionPath {
         pointer = 0;
     }
 
-    public MotionPath(Vector2d[] pos, double[] heading, double[] tTol, double[] rTol) {
-        positions = pos;
-        headings = heading;
-        tTolerances = tTol;
-        rTolerances = rTol;
+    public MotionPath(double ins[][], DcMotorEx[] em, DcMotorSimple[] sm) {
+        instructions = ins;
+        exmotors = em;
+        simplemotors = sm;
 
         pointer = 0;
     }
 
     //Getters
-    public Vector2d getCurrentPosition() {
-        return positions[Math.min(pointer, positions.length-1)];
+    public double[] getCurrentInstruction() {
+        return instructions[pointer];
     }
 
-    public double getCurrentHeading() {
-        return headings[Math.min(pointer, headings.length-1)];
-    }
-
-    public double getCurrentRotationTolerance() {
-        return rTolerances[Math.min(pointer, rTolerances.length-1)];
-    }
-
-    public double getCurrentTranslationTolerance() {
-        return tTolerances[Math.min(pointer, tTolerances.length-1)];
-    }
-
-    public int getPosePointer() {
+    public int getPointer() {
         return  pointer;
     }
 
+    public DcMotorEx[] getExMotors() {
+        return exmotors;
+    }
+
+    public DcMotorSimple[] getSimpleMotors() {
+        return simplemotors;
+    }
+
     //Setters
-    public void setPosePointer(int p) {
+    public void setInstructions(double[][] ins) {
+        instructions = ins;
+    }
+
+    public void setExMotors(DcMotorEx[] m) {
+        exmotors = m;
+    }
+
+    public void setSimpleMotors(DcMotorSimple[] m) {
+        simplemotors = m;
+    }
+
+    public void setPointer(int p) {
         pointer = p;
     }
 
     //Methods
-    public void advancePose() {
-        //if (pointer >= positions.length-1 || pointer >= headings.length-1) { return; }
+    public void advancePointer() {
+        if (pointer >= instructions.length-1) { return; }
         pointer++;
     }
 }

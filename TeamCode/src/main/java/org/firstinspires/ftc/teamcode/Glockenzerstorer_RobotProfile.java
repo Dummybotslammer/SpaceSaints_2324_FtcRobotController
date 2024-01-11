@@ -17,5 +17,9 @@ public class Glockenzerstorer_RobotProfile {
     public final static double OUTTAKE_POCKET_REST_POSITION = 0.5;
     public final static double OUTTAKE_POCKET_DEPOSIT_POSITION = 0.89;
     public final static double OUTTAKE_POCKET_MID_POSITION = 0.8;
+    public final static double AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT = 0.01;
+    public final static double AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE = 0.2;
+    public final static double AUTONOMOUS_HEADING_TOLERANCE_TIGHT = Math.toRadians(2.5);
+    public final static double AUTONOMOUS_HEADING_TOLERANCE_LOOSE = Math.toRadians(10.0);
 
 }

@@ -4,6 +4,7 @@ import com.github.dummybotslammer.spacesaintsmppc.Utils.MathUtils;
 import com.github.dummybotslammer.spacesaintsmppc.Utils.PIDController;
 import com.github.dummybotslammer.spacesaintsmppc.Utils.MotionPath;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -486,26 +487,62 @@ public class OmniDriveController {
     }
 
     public void trackMotionPath(MotionPath path, double elapsedTime) {
-        /*translationController.setCoefficients(0.4, 0.0, 0.2);
-        rotationController.setCoefficients(0.8, 0.0, 0.4);*/
         updateOdometry(elapsedTime, true);
 
-        setTargetPosition(path.getCurrentPosition());
-        setTargetHeading(path.getCurrentHeading());
-        boolean rstate = applyRotationalCorrection(elapsedTime);
-        boolean tstate = applyTranslationalCorrection(elapsedTime);
+        boolean rstate = true;
+        boolean tstate = true;
+
+        //Fetch and parse instruction.
+        double[] ins = path.getCurrentInstruction();
+        DcMotorEx[] exmotors = path.getExMotors();
+        DcMotorSimple[] simplemotors = path.getSimpleMotors();
+
+        //Used for tracking elapsed time and holding the motor instructions for fixed durations.
+        long start;
+        long end;
+
+        switch ((char) ins[0]) {
+            case 'p':
+                //Sets up the targeting for the pose. Sets additional logic for tolerance and positioning updates.
+                setTargetPosition(new Vector2d(ins[1], ins[2]));
+                setTargetHeading(ins[3]);
+                setTranslationControllerTolerance(ins[4]);
+                setRotationControllerTolerance(ins[5]);
+
+                rstate = applyRotationalCorrection(elapsedTime);
+                tstate = applyTranslationalCorrection(elapsedTime);
+                break;
+
+            case 'e':
+                exmotors[(int) ins[1]].setTargetPosition((int) ins[2]);
+                exmotors[(int) ins[1]].setVelocity((int) ins[3]);
+                exmotors[(int) ins[1]].setPower(ins[4]);
+
+                //Holds for a duration.
+                start = System.currentTimeMillis();
+                end = System.currentTimeMillis();
+                while (end - start < ins[5]) { end = System.currentTimeMillis(); }
+                break;
+
+            case 's':
+                simplemotors[(int) ins[1]].setPower(ins[2]);
+
+                //Holds for a duration.
+                start = System.currentTimeMillis();
+                end = System.currentTimeMillis();
+                while (end - start < ins[3]) { end = System.currentTimeMillis(); }
+                break;
+
+            default:
+                break;
+        }
 
         //Applying corrective motion
         computeVelocitiesThenDrive();
 
         //Indicates that the robot has reached its current target pose.
         if(rstate && tstate) {
-            path.advancePose();
-
-            setTranslationControllerTolerance(path.getCurrentTranslationTolerance());
-            setRotationControllerTolerance(path.getCurrentRotationTolerance());
-            setTargetPosition(path.getCurrentPosition());
-            setTargetHeading(path.getCurrentHeading());
+            path.advancePointer();
         }
     }
 

@@ -75,12 +75,14 @@ public class OmniDriveAutonomousControl_Test extends LinearOpMode {
         Vector2d target = new Vector2d(2.5, 1.0);
         double targetAngle = Math.PI/2;
 
+        MotionPath path = new MotionPath();
+        /*
         MotionPath path = new MotionPath(
                 new Vector2d[]{
                         new Vector2d(0.0, -0.55),
                         new Vector2d(2.0, -0.55),
                         new Vector2d(0.0, -0.55),
-                        /*new Vector2d(-0.40, 1.5),*/
+                        //new Vector2d(-0.40, 1.5),
                         new Vector2d(0.0, 0.75),
                         new Vector2d(1.5, 0.75),
                         new Vector2d(1.5, -0.55),
@@ -112,6 +114,7 @@ public class OmniDriveAutonomousControl_Test extends LinearOpMode {
                         Math.toRadians(2.5),
                 }
         );
+        */
 
         /*
         //Object for receiving the IMU angles:
