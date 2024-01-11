@@ -118,7 +118,7 @@ public class Glockenzerstorer_DriverApp extends LinearOpMode {
         omnidrive.setTargetHeading(omnidrive.getInitialHeading());
 
         omnidrive.translationController.setCoefficients(0.4, 0.0, 0.2);
-        omnidrive.rotationController.setCoefficients(1.4, 0.0, 1.4);
+        omnidrive.rotationController.setCoefficients(1.4, 0.0, 1.5);
 
         waitForStart();
 
@@ -136,7 +136,7 @@ public class Glockenzerstorer_DriverApp extends LinearOpMode {
             elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
 
             //Launcher
-            if(gamepad1.left_bumper && gamepad1.right_bumper) { launcher.setPosition(1); }
+            if(gamepad1.left_bumper) { launcher.setPosition(1); }
 
             //Linear Slide
             if (states.highToggle(gamepad1.dpad_up, 2)) {
@@ -157,7 +157,17 @@ public class Glockenzerstorer_DriverApp extends LinearOpMode {
             if (states.highToggle(gamepad1.y, 0)) { DcMotorExController.togglePower(intakeFeeder, 1.0, 0.0); }
 
             //Outtake Pocket Pivot
-            if (states.highToggle(gamepad1.x, 1)) { DcMotorExController.toggleServoPosition(outtakePivot, OUTTAKE_POCKET_REST_POSITION, OUTTAKE_POCKET_DEPOSIT_POSITION); }
+            if (states.highToggle(gamepad1.x, 1)) {
+                DcMotorExController.toggleServoPosition(outtakePivot, OUTTAKE_POCKET_REST_POSITION, OUTTAKE_POCKET_DEPOSIT_POSITION);
+                if (outtakePivot.getPosition() != OUTTAKE_POCKET_REST_POSITION) {
+                    sleep(680);
+                    outtakePivot.setPosition(OUTTAKE_POCKET_MID_POSITION);
+                    sleep(250);
+                    outtakePivot.setPosition(OUTTAKE_POCKET_DEPOSIT_POSITION);
+                }
+                //DcMotorExController.toggleServoPosition(outtakePivot, OUTTAKE_POCKET_DEPOSIT_POSITION, OUTTAKE_POCKET_MID_POSITION);
+                //DcMotorExController.toggleServoPosition(outtakePivot, OUTTAKE_POCKET_MID_POSITION, OUTTAKE_POCKET_DEPOSIT_POSITION);
+            }
 
             //Odometry Loop
             omnidrive.updateOdometry(elapsedTime, true);
