@@ -1,0 +1,218 @@
+package org.firstinspires.ftc.teamcode;
+
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.LIFT_EXTENSION_POSITIONS;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.MAX_ANGULAR_VELOCITIES;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.MOVEMENT_VECTOR_SCALE_FACTORS;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.OUTTAKE_POCKET_DEPOSIT_POSITION;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.OUTTAKE_POCKET_REST_POSITION;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.ROTATIONAL_DRIFT_CORRECTION_PID;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.TICKS_PER_HDHEXMOTOR_REV;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.WHEEL_DIAMETER;
+
+import com.github.dummybotslammer.spacesaintsmppc.Controllers.DcMotorExController;
+import com.github.dummybotslammer.spacesaintsmppc.Controllers.OmniDriveController;
+import com.github.dummybotslammer.spacesaintsmppc.Utils.StateMachine;
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.Blinker;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.Servo;
+
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
+import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
+
+import javax.vecmath.Vector2d;
+
+@TeleOp(name="Glockenzerstorer2324 - Manual(No Lift Positioning) DriverApp")
+public class Glockenzerstorer_ManualDriverApp extends LinearOpMode {
+    //All physical measurements are in SI units, unless stated otherwise, or being converted to motor/encoder ticks.
+    //Angles are all in radians unless specified otherwise as well.
+    private boolean controlSensitivityState = true; //LOW - false, HIGH - true
+    private final double stickMovementVectorScaleFactor = 0.2; //For: heading_velocity = scale * velocity (ms^-1)
+    private final double maxAngularVelocity = Math.PI/3;
+
+    private Blinker control_Hub;
+    private IMU imu; //BNO055
+    private IMU.Parameters imuParameters;
+    private DcMotorEx drive1;
+    private DcMotorEx drive2;
+    private DcMotorEx drive3;
+
+    private DcMotorEx lift;
+    private DcMotorSimple intakeFeeder;
+    private Servo launcher;
+    private Servo outtakePivot;
+    private OmniDriveController omnidrive;
+    private StateMachine states = new StateMachine();
+
+    @Override
+    public void runOpMode() {
+        imu = hardwareMap.get(IMU.class, "imu");
+        drive1 = hardwareMap.get(DcMotorEx.class, "drive1");
+        drive2 = hardwareMap.get(DcMotorEx.class, "drive2");
+        drive3 = hardwareMap.get(DcMotorEx.class, "drive3");
+        lift = hardwareMap.get(DcMotorEx.class, "lift");
+        intakeFeeder = hardwareMap.get(DcMotorSimple.class, "intakeFeederL");
+        launcher = hardwareMap.get(Servo.class, "launcher");
+        outtakePivot = hardwareMap.get(Servo.class, "outtakePivot");
+
+        imuParameters = new IMU.Parameters( //Measurements taken from robot chassis.
+                new RevHubOrientationOnRobot(
+                        new Orientation(
+                                AxesReference.INTRINSIC,
+                                AxesOrder.ZYX,
+                                AngleUnit.DEGREES,
+                                -145,
+                                0,
+                                180,
+                                0  // acquisitionTime, not used
+                        )
+                )
+        );
+        imu.initialize(imuParameters);
+        imu.resetYaw();
+
+        states.setPrevStates(new boolean[] {
+                false, //#0 - Intake Feeder
+                false, //#1 - Outtake Pocket Pivot
+                false, //#2 - Lift (Up)
+                false, //#3 - Lift (Down)
+                false, //#4 - Control Sensitivity State
+        });
+
+        states.setSequences(new int[] {
+                0, //#0 - Lift Stage Sequence
+        });
+
+        telemetry.addData("Status", "Running");
+
+        //RUNTIME VARIABLES
+        double leftStickX, leftStickY, rightStickX, angularVelocity;
+        double startElapsed = System.nanoTime();
+        double endElapsed = System.nanoTime();
+        double elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9)); //Converted to seconds
+        Vector2d stickVector = new Vector2d(0, 0);
+
+        //MOTOR & ENCODER RESETS AND CONFIGS
+        launcher.setPosition(-1);
+
+        drive1.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        drive2.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        drive3.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        lift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+        drive1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        drive2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        drive3.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        lift.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        lift.setPower(0.0);
+
+        drive1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        drive2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        drive3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        lift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+        outtakePivot.setPosition(OUTTAKE_POCKET_REST_POSITION);
+
+        omnidrive = new OmniDriveController(drive1, drive2, drive3, imu, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, WHEEL_DIAMETER);
+        omnidrive.setInitialHeading(Math.PI/2);
+        omnidrive.setTargetHeading(omnidrive.getInitialHeading());
+
+        omnidrive.translationController.setCoefficients(0.4, 0.0, 0.2);
+        omnidrive.rotationController.setCoefficients(
+                ROTATIONAL_DRIFT_CORRECTION_PID[0],
+                ROTATIONAL_DRIFT_CORRECTION_PID[1],
+                ROTATIONAL_DRIFT_CORRECTION_PID[2]);
+
+        waitForStart();
+
+        while(opModeIsActive()) {
+            //Input Processing
+            leftStickX = gamepad1.left_stick_x;
+            leftStickY = -gamepad1.left_stick_y;
+            rightStickX = gamepad1.right_stick_x;
+            angularVelocity = MAX_ANGULAR_VELOCITIES[controlSensitivityState ? 1:0]*rightStickX;
+
+            stickVector.set(new double[]{leftStickX, leftStickY});
+            stickVector.scale(MOVEMENT_VECTOR_SCALE_FACTORS[controlSensitivityState ? 1:0]);
+
+            endElapsed = System.nanoTime();
+            elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
+
+            //Control Sensitivity State Toggle
+            if (states.highToggle(gamepad1.a, 4)) { controlSensitivityState ^= true; }
+
+            //Launcher
+            if(gamepad1.left_trigger > 0.2) { launcher.setPosition(1); }
+
+            //Linear Slide
+            if(gamepad1.dpad_up) { lift.setPower(-1.0); }
+            else if(gamepad1.dpad_down) { lift.setPower(1.0); }
+            else { lift.setPower(0.0); }
+
+            //Intake Feeder
+            if (states.highToggle(gamepad1.y, 0)) { DcMotorExController.togglePower(intakeFeeder, 1.0, 0.0); }
+
+            //Outtake Pocket Pivot
+            if (states.highToggle(gamepad1.x, 1)) {
+                DcMotorExController.toggleServoPosition(outtakePivot, OUTTAKE_POCKET_REST_POSITION, OUTTAKE_POCKET_DEPOSIT_POSITION);
+
+                /*
+                if (outtakePivot.getPosition() != OUTTAKE_POCKET_REST_POSITION) {
+                    sleep(680);
+                    outtakePivot.setPosition(OUTTAKE_POCKET_MID_POSITION);
+                    sleep(250);
+                    outtakePivot.setPosition(OUTTAKE_POCKET_DEPOSIT_POSITION);
+                } */
+            }
+
+            //Odometry Loop
+            omnidrive.updateOdometry(elapsedTime, true);
+
+            //Heading Controls & Drift Correction
+            if (Math.abs(angularVelocity) > 0) {
+                omnidrive.setTargetAngularVelocity(angularVelocity);
+                omnidrive.setTargetHeading(omnidrive.getHeadingAngle());
+            }
+            else { omnidrive.applyRotationalCorrection(elapsedTime); /*Drift Correction*/ }
+
+            //Drive Controls
+            omnidrive.setRelativeTargetLinearVelocity(stickVector);
+            omnidrive.computeVelocitiesThenDrive();
+
+            startElapsed = System.nanoTime();
+
+            //DEBUG//
+            double[] t1 = {omnidrive.getTargetDriveVelocities()[0].x,omnidrive.getTargetDriveVelocities()[0].y};
+            double[] t2 = {omnidrive.getTargetDriveVelocities()[1].x,omnidrive.getTargetDriveVelocities()[1].y};
+            double[] t3 = {omnidrive.getTargetDriveVelocities()[2].x,omnidrive.getTargetDriveVelocities()[2].y};
+            Vector2d robotPosition = omnidrive.getPosition();
+
+            telemetry.addData("--CONTROL SENSITIVITY STATE", controlSensitivityState ? "ROUGH":"FINE");
+            telemetry.addData("Left Stick X", leftStickX);
+            telemetry.addData("Left Stick Y", leftStickY);
+            telemetry.addData("Right Stick X", rightStickX);
+            telemetry.addData("Relative Linear Velocity", String.format("%f, %f", omnidrive.getTargetRelativeLinearVelocity().x, omnidrive.getTargetRelativeLinearVelocity().y));
+            telemetry.addData("Drive1 Velocity", String.format("%f, %f", t1[0], t1[1]));
+            telemetry.addData("Drive2 Velocity", String.format("%f, %f", t2[0], t2[1]));
+            telemetry.addData("Drive3 Velocity", String.format("%f, %f", t3[0], t3[1]));
+            telemetry.addData("Drive1 Speed", omnidrive.getTargetDriveSpeeds()[0]);
+            telemetry.addData("Drive2 Speed", omnidrive.getTargetDriveSpeeds()[1]);
+            telemetry.addData("Drive3 Speed", omnidrive.getTargetDriveSpeeds()[2]);
+            telemetry.addData("Drive1 Vector Angle", Math.toDegrees(omnidrive.getTargetDriveVelocities()[0].angle(omnidrive.getUnitVectors()[0])));
+            telemetry.addData("Drive2 Vector Angle", Math.toDegrees(omnidrive.getTargetDriveVelocities()[0].angle(omnidrive.getUnitVectors()[0])));
+            telemetry.addData("Drive3 Vector Angle", Math.toDegrees(omnidrive.getTargetDriveVelocities()[0].angle(omnidrive.getUnitVectors()[0])));
+            telemetry.addData("Robot Position", String.format("%f, %f", robotPosition.x, robotPosition.y));
+            telemetry.addData("Robot Heading Angle (Encoders)", Math.toDegrees(omnidrive.getHeadingAngle()));
+            telemetry.addData("Robot Heading Angle (IMU)", Math.toDegrees(omnidrive.getHeadingAngle()));
+            telemetry.addData("Global X and Y Values", String.format("%f, %f", omnidrive.getGlobalTargetLinearVelocity().x, omnidrive.getGlobalTargetLinearVelocity().y));
+            telemetry.update();
+        }
+    }
+}

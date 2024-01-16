@@ -4,6 +4,11 @@ import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.AUTON
 import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.AUTONOMOUS_HEADING_TOLERANCE_TIGHT;
 import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE;
 import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.DISTANCE_SENSOR_CENTRE_OFFSET_LEFT;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.DISTANCE_SENSOR_CENTRE_OFFSET_RIGHT;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.DRIVETRAIN_RADIUS;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.LIFT_EXTENSION_POSITIONS;
+import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.OUTTAKE_POCKET_DEPOSIT_POSITION;
 import static org.firstinspires.ftc.teamcode.Glockenzerstorer_RobotProfile.OUTTAKE_POCKET_REST_POSITION;
 
 import com.github.dummybotslammer.spacesaintsmppc.Controllers.OmniDriveController;
@@ -15,13 +20,16 @@ import com.qualcomm.robotcore.hardware.Blinker;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
 import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
+import org.openftc.easyopencv.OpenCvCamera;
 
 import javax.vecmath.Vector2d;
 
@@ -48,6 +56,12 @@ public class Glockenzerstorer_Auto_BLUERight extends LinearOpMode {
     private Servo outtakePivot;
     private OmniDriveController omnidrive;
 
+    //Sensors
+    private DistanceSensor distanceSensorRight;
+    private DistanceSensor distanceSensorLeft;
+    private OpenCvCamera camera;
+    private CentrestageTeamPropDetectionPipeline pipeline;
+
     @Override
     public void runOpMode() {
         imu = hardwareMap.get(IMU.class, "imu");
@@ -58,6 +72,8 @@ public class Glockenzerstorer_Auto_BLUERight extends LinearOpMode {
         intakeFeeder = hardwareMap.get(DcMotorSimple.class, "intakeFeederL");
         launcher = hardwareMap.get(Servo.class, "launcher");
         outtakePivot = hardwareMap.get(Servo.class, "outtakePivot");
+        distanceSensorRight = hardwareMap.get(DistanceSensor.class, "distanceSensorRight");
+        distanceSensorLeft = hardwareMap.get(DistanceSensor.class, "distanceSensorLeft");;
 
         imuParameters = new IMU.Parameters( //Measurements taken from robot chassis.
                 new RevHubOrientationOnRobot(
@@ -78,10 +94,7 @@ public class Glockenzerstorer_Auto_BLUERight extends LinearOpMode {
         telemetry.addData("Status", "Running");
 
         //RUNTIME VARIABLES
-        double leftStickX;
-        double leftStickY;
-        double rightStickX;
-        double angularVelocity;
+        int pathID = 0;
         double startElapsed = System.nanoTime();
         double endElapsed = System.nanoTime();
         double elapsedTime = (endElapsed - startElapsed)/(1000000000); //Converted to seconds
@@ -90,24 +103,99 @@ public class Glockenzerstorer_Auto_BLUERight extends LinearOpMode {
         Vector2d target = new Vector2d(2.5, 1.0);
         double targetAngle = Math.PI/2;
 
-        MotionPath path = new MotionPath();
-        path.setExMotors( new DcMotorEx[] {
-                lift,
-        } );
-        path.setSimpleMotors( new DcMotorSimple[] {
-                intakeFeeder,
+        MotionPath paths[] = {new MotionPath(), new MotionPath(), new MotionPath(), new MotionPath()};
+        for (int i = 0; i < paths.length; i++) {
+            paths[i].setExMotors( new DcMotorEx[] {
+                    lift,
+            } );
+            paths[i].setSimpleMotors( new DcMotorSimple[] {
+                    intakeFeeder,
+            } );
+            paths[i].setServos( new Servo[] {
+                    outtakePivot,
+            } );
+        }
+
+        //START PATH
+        paths[0].setInstructions( new double[][]{
+                        {'p', 0.98, 1.23 - DRIVETRAIN_RADIUS, Math.PI / 2, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+                        //{'s', 0, -1, 700, 0, 0},
+                        {'s', 0, 0, 0, 0, 0}, //Useful for implementing delays.
+                } );
+
+        //MIDDLE (2) PATH
+        paths[2].setInstructions( new double[][] {
+                //{'p', 0.98, 1.23-DRIVETRAIN_RADIUS+0.15, Math.PI/2, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+                {'p', 0.98, 3.6576-(1.23-0.48), 2.0*Math.PI/4.0*3.0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+                //{'p', 0.15, 1.258-0.38+0.05, Math.PI/2, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                //{'p', 0.15, 1.258-0.38-0.20, Math.PI/2, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+
+                {'p', 0.6, 3.6576-(1.23-0.48), 2.0*Math.PI/4.0*3.0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                //{'p', 0.6, , 0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                {'p', 0.6, 3.6576/2.0, 0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                {'p', 2.7432, 3.6576/2.0, Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                //{'p', 2.77, 3.6576-0.965, 0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                {'p', 2.77, 3.6576-0.965, Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+
+                //{'p', 1.79+0.98, 0.965, Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+                {'p', 3.10, 3.6576-0.965, Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+                {'e', 0, LIFT_EXTENSION_POSITIONS[2], 500, 1.0, 2000},
+                {'v', 0, OUTTAKE_POCKET_DEPOSIT_POSITION, 1500, 0, 0},
+                {'v', 0, OUTTAKE_POCKET_REST_POSITION, 500, 0, 0},
+                {'e', 0, LIFT_EXTENSION_POSITIONS[0], 500, 1.0, 2000},
+
+                {'p', 3.0, 3.6576-1.4, Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
         } );
 
-        path.setInstructions( new double[][] {
-                {'p', 0.0, -0.55, Math.PI/2, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
-                {'p', 2.0, -0.55, 0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
-                {'p', 0.0, -0.55, 0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
-                //new Vector2d(-0.40, 1.5),
-                {'p', 0.0, 0.75, Math.PI/2, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
-                {'p', 1.5, 0.75, Math.PI/2, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
-                {'p', 1.5, -0.55, Math.PI/2, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
-                {'p', 0.0, -0.55, Math.PI/2, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
-                } );
+        //LEFT (1) PATH
+        paths[1].setInstructions( new double[][] {
+                //Moving to backdrop and positioning:
+                {'r', 0.5, 0.0, 0.3, 0, 0},
+                {'p', 0.98, 3.6576-(1.23-DRIVETRAIN_RADIUS), 0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+                {'r', 1.8, 0.0, 1.0, 0, 0},
+                {'p', 0.90, 3.6576-(1.23-DRIVETRAIN_RADIUS), 0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+                {'p', 0.74, 3.6576-(1.23-DRIVETRAIN_RADIUS), 0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+                {'p', 0.76, 3.6576/2.0, 0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                //{'p', 0.5, 0.3, Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                //{'p', 0.6, 3.6576/2.0, Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                {'p', 2.7432, 3.6576/2.0, 0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                //{'p', 2.77, 3.6576-(10.5/36.0 * 3.6576), 0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                {'p', 2.77, 3.6576-(7.5/36.0 * 3.6576), Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+
+                //Scoring
+                {'p', 3.15, 3.6576-((7.5/36.0 * 3.6576)+0.25) /*10.5/36.0 * 3.6576*/, Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+                {'e', 0, LIFT_EXTENSION_POSITIONS[2], 500, 1.0, 2000},
+                {'v', 0, OUTTAKE_POCKET_DEPOSIT_POSITION, 1500, 0, 0},
+                {'v', 0, OUTTAKE_POCKET_REST_POSITION, 500, 0, 0},
+                {'e', 0, LIFT_EXTENSION_POSITIONS[0], 500, 1.0, 2000},
+
+                //Parking
+                {'p', 3.0, 3.6576-1.6, Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+        } );
+
+        //RIGHT (3) PATH
+        paths[3].setInstructions( new double[][] {
+                //Moving to backdrop and positioning:
+                {'r', 0.5, 0.0, 0.3, 0, 0},
+                {'p', 0.98, 3.6576-(1.23-DRIVETRAIN_RADIUS), Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+                {'r', 1.8, 0.0, 1.0, 0, 0},
+                {'p', 0.98-0.1, 3.6576-(1.23-DRIVETRAIN_RADIUS), Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+                {'p', 0.98+0.8, 3.6576-(1.23-DRIVETRAIN_RADIUS), Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+                {'p', 0.98+0.8, 3.6576/2.0, 0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                {'p', 2.7432, 3.6576/2.0, 0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                //{'p', 2.77, 7.5/36.0 * 3.6576, 0, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_LOOSE},
+                {'p', 2.77, 3.6576-(10.5/36.0 * 3.6576), Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+
+                //Scoring
+                {'p', 3.10, 3.6576-1.09, Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+                {'e', 0, LIFT_EXTENSION_POSITIONS[2], 500, 1.0, 2000},
+                {'v', 0, OUTTAKE_POCKET_DEPOSIT_POSITION, 1500, 0, 0},
+                {'v', 0, OUTTAKE_POCKET_REST_POSITION, 500, 0, 0},
+                {'e', 0, LIFT_EXTENSION_POSITIONS[0], 500, 1.0, 2000},
+
+                //Parking
+                {'p', 3.0, 3.6576-1.4, Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT},
+        } );
 
         //MOTOR & ENCODER RESETS AND CONFIGS
         launcher.setPosition(-1);
@@ -133,18 +221,35 @@ public class Glockenzerstorer_Auto_BLUERight extends LinearOpMode {
         outtakePivot.setPosition(OUTTAKE_POCKET_REST_POSITION);
 
         omnidrive = new OmniDriveController(drive1, drive2, drive3, imu, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, TICKS_PER_HDHEXMOTOR_REV, wheelDiameter);
-        omnidrive.setInitialHeading(Math.PI/2);
+        omnidrive.setInitialHeading(2.0*Math.PI/4.0*3.0);
         omnidrive.translationController.setCoefficients(0.3, 0.0, 0.15);
-        omnidrive.rotationController.setCoefficients(1.0, 0.0, 0.6);
+        omnidrive.rotationController.setCoefficients(1.8, 0.0, 1.0);  //(1.0, 0.0, 0.6);
         omnidrive.setTranslationControllerTolerance(0.05);
         omnidrive.setRotationControllerTolerance(Math.toRadians(5.0));
+
+        sleep(1000);
+
+        int markerID = 0; //1->LEFT, 2->MIDDLE, 3->RIGHT
+        double initx = distanceSensorRight.getDistance(DistanceUnit.METER) + DISTANCE_SENSOR_CENTRE_OFFSET_LEFT;
+        double inity = 3.6576-DRIVETRAIN_RADIUS;
+        omnidrive.setPosition(new Vector2d(initx, inity));
+
         waitForStart();
 
         while(opModeIsActive()) {
             endElapsed = System.nanoTime();
             elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
 
-            omnidrive.trackMotionPath(path, elapsedTime);
+            if (markerID == 0 && pathID == 0 && omnidrive.getPosition().y > 0.8) {
+                double obj_l = distanceSensorLeft.getDistance(DistanceUnit.METER)+DISTANCE_SENSOR_CENTRE_OFFSET_LEFT;
+                double obj_r = distanceSensorRight.getDistance(DistanceUnit.METER)+DISTANCE_SENSOR_CENTRE_OFFSET_RIGHT;
+
+                if (obj_l <= 0.4) { markerID=1; }
+                if (obj_r <= 0.4) { markerID=3; }
+                pathID = markerID;
+            }
+
+            if (omnidrive.trackMotionPath(paths[pathID], elapsedTime) && markerID == 0) { markerID=2; pathID=2; }
 
             //DEBUG
             double[] t1 = {omnidrive.getTargetDriveVelocities()[0].x,omnidrive.getTargetDriveVelocities()[0].y};
@@ -154,6 +259,7 @@ public class Glockenzerstorer_Auto_BLUERight extends LinearOpMode {
 
             startElapsed = System.nanoTime();
 
+            telemetry.addData("Autonomous Path ID", pathID);
             telemetry.addData("Relative Linear Velocity", String.format("%f, %f", omnidrive.getTargetRelativeLinearVelocity().x, omnidrive.getTargetRelativeLinearVelocity().y));
             telemetry.addData("Drive1 Velocity", String.format("%f, %f", t1[0], t1[1]));
             telemetry.addData("Drive2 Velocity", String.format("%f, %f", t2[0], t2[1]));

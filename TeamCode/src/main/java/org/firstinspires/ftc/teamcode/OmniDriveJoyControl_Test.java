@@ -105,12 +105,12 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
         drive3.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         lift.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        lift.setTargetPosition(0);
+        //lift.setTargetPosition(0);
 
         drive1.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         drive2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         drive3.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        lift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         outtakePivot.setPosition(0.5);
 
@@ -149,21 +149,21 @@ public class OmniDriveJoyControl_Test extends LinearOpMode {
             }
 
             //Intake Lift
-            /*
             if(gamepad1.dpad_up) {
-                lift.setVelocity(2000);
+                lift.setPower(-1.0);
             }
             else if(gamepad1.dpad_down) {
-                lift.setVelocity(-2000);
+                lift.setPower(1.0);
             }
             else {
-                lift.setVelocity(0);
-            } */
+                lift.setPower(0.0);
+            }
+            /*
             if (gamepad1.dpad_up) {
                 lift.setPower(1.0);
                 //DcMotorExController.togglePosition(lift, 0, (int)((0.4/(Math.PI*0.05496)) * TICKS_PER_HDHEXMOTOR_REV));
                 DcMotorExController.togglePosition(lift, 0, -MathUtils.metersToTicks(0.25, 0.05496, TICKS_PER_HDHEXMOTOR_REV));
-            }
+            } */
 
             //Intake Feeder
             if (gamepad1.y) {

@@ -2,6 +2,7 @@ package com.github.dummybotslammer.spacesaintsmppc.Utils;
 
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Servo;
 
 import javax.vecmath.Vector2d;
 
@@ -13,6 +14,7 @@ public class MotionPath {
     private double instructions[][]; //FORMAT: {INSTRUCTION CODE, PARAM1, PARAM2, PARAM 3, PARAM 4, PARAM 5, PARAM 6}
     private DcMotorEx exmotors[];
     private DcMotorSimple simplemotors[];
+    private Servo servos[];
     private int pointer;
 
     //Constructors
@@ -46,6 +48,10 @@ public class MotionPath {
         return simplemotors;
     }
 
+    public Servo[] getServos() {
+        return servos;
+    }
+
     //Setters
     public void setInstructions(double[][] ins) {
         instructions = ins;
@@ -57,6 +63,10 @@ public class MotionPath {
 
     public void setSimpleMotors(DcMotorSimple[] m) {
         simplemotors = m;
+    }
+
+    public void setServos(Servo[] s) {
+        servos = s;
     }
 
     public void setPointer(int p) {

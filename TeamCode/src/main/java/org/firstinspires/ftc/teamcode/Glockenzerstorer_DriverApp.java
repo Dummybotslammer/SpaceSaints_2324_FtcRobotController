@@ -26,6 +26,7 @@ import javax.vecmath.Vector2d;
 public class Glockenzerstorer_DriverApp extends LinearOpMode {
     //All physical measurements are in SI units, unless stated otherwise, or being converted to motor/encoder ticks.
     //Angles are all in radians unless specified otherwise as well.
+    private boolean controlSensitivityState = true; //LOW - false, HIGH - true
     private final double stickMovementVectorScaleFactor = 0.2; //For: heading_velocity = scale * velocity (ms^-1)
     private final double maxAngularVelocity = Math.PI/3;
 
@@ -75,6 +76,7 @@ public class Glockenzerstorer_DriverApp extends LinearOpMode {
                 false, //#1 - Outtake Pocket Pivot
                 false, //#2 - Lift (Up)
                 false, //#3 - Lift (Down)
+                false, //#4 - Control Sensitivity State
         });
 
         states.setSequences(new int[] {
@@ -118,7 +120,10 @@ public class Glockenzerstorer_DriverApp extends LinearOpMode {
         omnidrive.setTargetHeading(omnidrive.getInitialHeading());
 
         omnidrive.translationController.setCoefficients(0.4, 0.0, 0.2);
-        omnidrive.rotationController.setCoefficients(1.4, 0.0, 1.5);
+        omnidrive.rotationController.setCoefficients(
+                ROTATIONAL_DRIFT_CORRECTION_PID[0],
+                ROTATIONAL_DRIFT_CORRECTION_PID[1],
+                ROTATIONAL_DRIFT_CORRECTION_PID[2]);
 
         waitForStart();
 
@@ -127,16 +132,19 @@ public class Glockenzerstorer_DriverApp extends LinearOpMode {
             leftStickX = gamepad1.left_stick_x;
             leftStickY = -gamepad1.left_stick_y;
             rightStickX = gamepad1.right_stick_x;
-            angularVelocity = maxAngularVelocity*rightStickX;
+            angularVelocity = MAX_ANGULAR_VELOCITIES[controlSensitivityState ? 1:0]*rightStickX;
 
             stickVector.set(new double[]{leftStickX, leftStickY});
-            stickVector.scale(stickMovementVectorScaleFactor);
+            stickVector.scale(MOVEMENT_VECTOR_SCALE_FACTORS[controlSensitivityState ? 1:0]);
 
             endElapsed = System.nanoTime();
             elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
 
+            //Control Sensitivity State Toggle
+            if (states.highToggle(gamepad1.a, 4)) { controlSensitivityState ^= true; }
+
             //Launcher
-            if(gamepad1.left_bumper) { launcher.setPosition(1); }
+            if(gamepad1.left_trigger > 0.2) { launcher.setPosition(1); }
 
             //Linear Slide
             if (states.highToggle(gamepad1.dpad_up, 2)) {
@@ -159,14 +167,14 @@ public class Glockenzerstorer_DriverApp extends LinearOpMode {
             //Outtake Pocket Pivot
             if (states.highToggle(gamepad1.x, 1)) {
                 DcMotorExController.toggleServoPosition(outtakePivot, OUTTAKE_POCKET_REST_POSITION, OUTTAKE_POCKET_DEPOSIT_POSITION);
+
+                /*
                 if (outtakePivot.getPosition() != OUTTAKE_POCKET_REST_POSITION) {
                     sleep(680);
                     outtakePivot.setPosition(OUTTAKE_POCKET_MID_POSITION);
                     sleep(250);
                     outtakePivot.setPosition(OUTTAKE_POCKET_DEPOSIT_POSITION);
-                }
-                //DcMotorExController.toggleServoPosition(outtakePivot, OUTTAKE_POCKET_DEPOSIT_POSITION, OUTTAKE_POCKET_MID_POSITION);
-                //DcMotorExController.toggleServoPosition(outtakePivot, OUTTAKE_POCKET_MID_POSITION, OUTTAKE_POCKET_DEPOSIT_POSITION);
+                } */
             }
 
             //Odometry Loop
@@ -191,6 +199,7 @@ public class Glockenzerstorer_DriverApp extends LinearOpMode {
             double[] t3 = {omnidrive.getTargetDriveVelocities()[2].x,omnidrive.getTargetDriveVelocities()[2].y};
             Vector2d robotPosition = omnidrive.getPosition();
 
+            telemetry.addData("--CONTROL SENSITIVITY STATE", controlSensitivityState ? "ROUGH":"FINE");
             telemetry.addData("Left Stick X", leftStickX);
             telemetry.addData("Left Stick Y", leftStickY);
             telemetry.addData("Right Stick X", rightStickX);

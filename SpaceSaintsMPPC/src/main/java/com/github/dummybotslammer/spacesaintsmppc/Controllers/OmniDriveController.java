@@ -6,9 +6,12 @@ import com.github.dummybotslammer.spacesaintsmppc.Utils.MotionPath;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+
+import java.util.Vector;
 
 import javax.vecmath.Vector2d;
 
@@ -173,6 +176,10 @@ public class OmniDriveController {
         target_linear_velocity = transVector;
     }
 
+    public Vector2d getPosition() { return odo_position; }
+
+    public void setPosition(Vector2d pos) { odo_position = pos; }
+
     public Vector2d getTargetPosition() {
         return target_position;
     }
@@ -231,8 +238,6 @@ public class OmniDriveController {
     public Vector2d getTargetRelativeLinearVelocity() {
         return target_linear_velocity;
     }
-
-    public Vector2d getPosition() {return odo_position;}
 
     public double getHeadingAngle() {return odo_heading_angle;}
 
@@ -486,7 +491,7 @@ public class OmniDriveController {
         return status;
     }
 
-    public void trackMotionPath(MotionPath path, double elapsedTime) {
+    public boolean trackMotionPath(MotionPath path, double elapsedTime) {
         updateOdometry(elapsedTime, true);
 
         boolean rstate = true;
@@ -496,6 +501,7 @@ public class OmniDriveController {
         double[] ins = path.getCurrentInstruction();
         DcMotorEx[] exmotors = path.getExMotors();
         DcMotorSimple[] simplemotors = path.getSimpleMotors();
+        Servo[] servos = path.getServos();
 
         //Used for tracking elapsed time and holding the motor instructions for fixed durations.
         long start;
@@ -509,6 +515,7 @@ public class OmniDriveController {
                 setTranslationControllerTolerance(ins[4]);
                 setRotationControllerTolerance(ins[5]);
 
+                //Applies the correction, whilst returning the bool indicating whether it is at its target (within tolerance)
                 rstate = applyRotationalCorrection(elapsedTime);
                 tstate = applyTranslationalCorrection(elapsedTime);
                 break;
@@ -533,6 +540,20 @@ public class OmniDriveController {
                 while (end - start < ins[3]) { end = System.currentTimeMillis(); }
                 break;
 
+            case 'v':
+                servos[(int) ins[1]].setPosition(ins[2]);
+
+                //Holds for a duration.
+                start = System.currentTimeMillis();
+                end = System.currentTimeMillis();
+                while (end - start < ins[3]) { end = System.currentTimeMillis(); }
+
+            case 't':
+                translationController.setCoefficients(ins[1], ins[2], ins[3]);
+
+            case 'r':
+                rotationController.setCoefficients(ins[1], ins[2], ins[3]);
+
             default:
                 break;
         }
@@ -543,7 +564,9 @@ public class OmniDriveController {
         //Indicates that the robot has reached its current target pose.
         if(rstate && tstate) {
             path.advancePointer();
+            return true;
         }
+        return false;
     }
 
 }
