@@ -23,11 +23,11 @@ public class Glockenzerstorer_RobotProfile {
     public final static double MOVEMENT_VECTOR_SCALE_FACTORS[] = new double[] {0.08, 0.2}; //FINE, ROUGH
     public final static int LIFT_EXTENSION_POSITIONS[] = {
             //Rest Position, It's meant to force the lift down a little, in order to ensure the outtake bucket is flush with the ground
-            MathUtils.metersToTicks(0.01, 0.05496, TICKS_PER_HDHEXMOTOR_REV),
+            MathUtils.metersToTicks(0.01, 0.05496, (int)(2.0*28.0*54.8)),
             //-MathUtils.metersToTicks(0.10, 0.05496, TICKS_PER_HDHEXMOTOR_REV), -
-            -MathUtils.metersToTicks(0.18, 0.05496, TICKS_PER_HDHEXMOTOR_REV),
+            -MathUtils.metersToTicks(0.18, 0.05496, (int)(2.0*28.0*54.8)),
             //-MathUtils.metersToTicks(0.28, 0.05496, TICKS_PER_HDHEXMOTOR_REV),
-            -MathUtils.metersToTicks(0.28+0.02 /*+0.045 */, 0.05496, TICKS_PER_HDHEXMOTOR_REV)
+            -MathUtils.metersToTicks(0.28+0.02 /*+0.045 */, 0.05496, (int)(2.0*28.0*54.8))
     };
 
     public final static double OUTTAKE_POCKET_REST_POSITION = 0.575;

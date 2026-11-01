@@ -124,9 +124,12 @@ public class Glockenzerstorer_CalcAuto_BLUERight extends LinearOpMode {
 
         //MIDDLE (2) PATH
         paths[2].setInstructions( new double[][] {
-                { 'p', 0.9144, 2.8448, 0.5*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
-                { 'p', 0.508, 2.8448, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
-                { 'p', 0.508, 1.8288, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE,  },
+                { 'p', 0.9144, 2.8448, 1.5*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
+                //{ 'p', 0.9144, 2.8448, 1.5*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
+                /*
+                { 'p', 0.508, 2.8448, 1.5*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
+                { 'p', 0.508, 1.8288, 1.5*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE,  },
+                { 'p', 2.9464, 1.8288, 1.5*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE,  },
                 { 'p', 2.9464, 1.8288, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE,  },
                 { 'p', 3.048, 2.7432, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
                 { 'p', 3.1496, 2.7432, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
@@ -134,7 +137,7 @@ public class Glockenzerstorer_CalcAuto_BLUERight extends LinearOpMode {
                 {'e', 0, LIFT_EXTENSION_POSITIONS[2], 500, 1.0, 2000},
                 {'v', 0, OUTTAKE_POCKET_DEPOSIT_POSITION, 1500, 0, 0},
                 {'v', 0, OUTTAKE_POCKET_REST_POSITION, 500, 0, 0},
-                {'e', 0, LIFT_EXTENSION_POSITIONS[0], 500, 1.0, 2000},
+                {'e', 0, LIFT_EXTENSION_POSITIONS[0], 500, 1.0, 2000},*/
         } );
 
         //LEFT (1) PATH
@@ -145,6 +148,7 @@ public class Glockenzerstorer_CalcAuto_BLUERight extends LinearOpMode {
                 { 'p', 1.016, 2.6416, 0.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
                 { 'p', 0.6095999999999999, 2.6416, 0.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
                 { 'p', 0.9144, 1.8288, 0.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE,  },
+                /*
                 { 'p', 2.8448, 1.8288, 0.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE,  },
                 { 'p', 3.048, 2.8956, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
                 { 'p', 3.1496, 2.8956, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
@@ -152,7 +156,7 @@ public class Glockenzerstorer_CalcAuto_BLUERight extends LinearOpMode {
                 {'e', 0, LIFT_EXTENSION_POSITIONS[2], 500, 1.0, 2000},
                 {'v', 0, OUTTAKE_POCKET_DEPOSIT_POSITION, 1500, 0, 0},
                 {'v', 0, OUTTAKE_POCKET_REST_POSITION, 500, 0, 0},
-                {'e', 0, LIFT_EXTENSION_POSITIONS[0], 500, 1.0, 2000},
+                {'e', 0, LIFT_EXTENSION_POSITIONS[0], 500, 1.0, 2000},*/
         } );
 
         //RIGHT (3) PATH
@@ -162,9 +166,11 @@ public class Glockenzerstorer_CalcAuto_BLUERight extends LinearOpMode {
                 {'r', 1.8, 0.0, 1.0, 0, 0},
                 { 'p', 0.8128, 2.6416, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
                 { 'p', 0.9652000000000001, 2.6416, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
+                { 'p', 0.9144, 1.8288, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE,  },
+                /*
                 { 'p', 0.9144, 1.8288, 0.5*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE,  },
                 { 'p', 2.9464, 1.8288, 0.5*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE,  },
-                { 'p', 2.9464, 1.8288, 0.5*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE,  },
+                { 'p', 2.9464, 1.8288, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE,  },
                 { 'p', 3.048, 2.5908, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
                 { 'p', 3.1496, 2.5908, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
 
@@ -172,7 +178,7 @@ public class Glockenzerstorer_CalcAuto_BLUERight extends LinearOpMode {
                 {'e', 0, LIFT_EXTENSION_POSITIONS[2], 500, 1.0, 2000},
                 {'v', 0, OUTTAKE_POCKET_DEPOSIT_POSITION, 1500, 0, 0},
                 {'v', 0, OUTTAKE_POCKET_REST_POSITION, 500, 0, 0},
-                {'e', 0, LIFT_EXTENSION_POSITIONS[0], 500, 1.0, 2000},
+                {'e', 0, LIFT_EXTENSION_POSITIONS[0], 500, 1.0, 2000}, */
         } );
 
         //MOTOR & ENCODER RESETS AND CONFIGS
@@ -218,7 +224,7 @@ public class Glockenzerstorer_CalcAuto_BLUERight extends LinearOpMode {
             endElapsed = System.nanoTime();
             elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
 
-            if (markerID == 0 && pathID == 0 && omnidrive.getPosition().y > 0.8) {
+            if (markerID == 0 && pathID == 0 && omnidrive.getPosition().y < 3.6576-0.8) {
                 double obj_l = distanceSensorLeft.getDistance(DistanceUnit.METER)+DISTANCE_SENSOR_CENTRE_OFFSET_LEFT;
                 double obj_r = distanceSensorRight.getDistance(DistanceUnit.METER)+DISTANCE_SENSOR_CENTRE_OFFSET_RIGHT;
 

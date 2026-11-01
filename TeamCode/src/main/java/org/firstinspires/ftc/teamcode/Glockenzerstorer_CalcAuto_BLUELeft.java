@@ -118,7 +118,7 @@ public class Glockenzerstorer_CalcAuto_BLUELeft extends LinearOpMode {
 
         //START PATH
         paths[0].setInstructions( new double[][]{
-                { 'p', 2.1336, 3.2512, 1.5*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
+                //{ 'p', 2.1336, 3.2512, 1.5*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
                 { 'p', 2.1336, 2.6416, 1.5*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
                 {'s', 0, 0, 0, 0, 0}, //Useful for implementing delays.
         } );
@@ -127,7 +127,7 @@ public class Glockenzerstorer_CalcAuto_BLUELeft extends LinearOpMode {
         paths[2].setInstructions( new double[][] {
                 { 'p', 2.1336, 2.8448, 1.5*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
                 { 'p', 3.048, 2.7432, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
-                { 'p', 3.1496, 2.7432, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
+                { 'p', 3.25, 2.7432, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
 
                 {'e', 0, LIFT_EXTENSION_POSITIONS[2], 500, 1.0, 2000},
                 {'v', 0, OUTTAKE_POCKET_DEPOSIT_POSITION, 1500, 0, 0},
@@ -144,7 +144,7 @@ public class Glockenzerstorer_CalcAuto_BLUELeft extends LinearOpMode {
                 { 'p', 2.0827999999999998, 2.6416, 0.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
                 { 'p', 2.3367999999999998, 3.2512, 0.5*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_LOOSE, AUTONOMOUS_HEADING_TOLERANCE_LOOSE,  },
                 { 'p', 3.048, 2.8956, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
-                { 'p', 3.1496, 2.8956, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
+                { 'p', 3.25, 2.8956, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
 
                 {'e', 0, LIFT_EXTENSION_POSITIONS[2], 500, 1.0, 2000},
                 {'v', 0, OUTTAKE_POCKET_DEPOSIT_POSITION, 1500, 0, 0},
@@ -159,7 +159,7 @@ public class Glockenzerstorer_CalcAuto_BLUELeft extends LinearOpMode {
                 {'r', 1.8, 0.0, 1.0, 0, 0},
                 { 'p', 2.032, 2.6416, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
                 { 'p', 3.048, 2.5908, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
-                { 'p', 3.1496, 2.5908, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
+                { 'p', 3.25, 2.5908, 1.0*Math.PI, AUTONOMOUS_TRANSLATIONAL_TOLERANCE_TIGHT, AUTONOMOUS_HEADING_TOLERANCE_TIGHT,  },
 
                 {'e', 0, LIFT_EXTENSION_POSITIONS[2], 500, 1.0, 2000},
                 {'v', 0, OUTTAKE_POCKET_DEPOSIT_POSITION, 1500, 0, 0},
@@ -200,7 +200,9 @@ public class Glockenzerstorer_CalcAuto_BLUELeft extends LinearOpMode {
         sleep(1000);
 
         int markerID = 0; //1->LEFT, 2->MIDDLE, 3->RIGHT
-        double initx = 3.6576-(distanceSensorLeft.getDistance(DistanceUnit.METER) + DISTANCE_SENSOR_CENTRE_OFFSET_LEFT);
+        //double initx = 3.6576-(distanceSensorLeft.getDistance(DistanceUnit.METER) + DISTANCE_SENSOR_CENTRE_OFFSET_LEFT);
+        //double inity = 3.6576-DRIVETRAIN_RADIUS;
+        double initx = 2.1336;
         double inity = 3.6576-DRIVETRAIN_RADIUS;
         omnidrive.setPosition(new Vector2d(initx, inity));
 
@@ -210,7 +212,7 @@ public class Glockenzerstorer_CalcAuto_BLUELeft extends LinearOpMode {
             endElapsed = System.nanoTime();
             elapsedTime = (endElapsed - startElapsed)*(Math.pow(10, 9));
 
-            if (markerID == 0 && pathID == 0 && omnidrive.getPosition().y > 0.8) {
+            if (markerID == 0 && pathID == 0 && omnidrive.getPosition().y < 3.6576-0.8) {
                 double obj_l = distanceSensorLeft.getDistance(DistanceUnit.METER)+DISTANCE_SENSOR_CENTRE_OFFSET_LEFT;
                 double obj_r = distanceSensorRight.getDistance(DistanceUnit.METER)+DISTANCE_SENSOR_CENTRE_OFFSET_RIGHT;
 

@@ -203,7 +203,9 @@ public class Glockenzerstorer_CalcAuto_REDRight extends LinearOpMode {
         sleep(1000);
 
         int markerID = 0; //1->LEFT, 2->MIDDLE, 3->RIGHT
-        double initx = 3.6576-(distanceSensorRight.getDistance(DistanceUnit.METER)+DISTANCE_SENSOR_CENTRE_OFFSET_RIGHT);//(3.6576/6.0*3.0)+DRIVETRAIN_RADIUS; //3.6576-((distanceSensorRight.getDistance(DistanceUnit.METER)/6.373540856031128)+DISTANCE_SENSOR_CENTRE_OFFSET_RIGHT+0.07);  //8.19/1.285
+        //double initx = 3.6576-(distanceSensorRight.getDistance(DistanceUnit.METER)+DISTANCE_SENSOR_CENTRE_OFFSET_RIGHT);//(3.6576/6.0*3.0)+DRIVETRAIN_RADIUS; //3.6576-((distanceSensorRight.getDistance(DistanceUnit.METER)/6.373540856031128)+DISTANCE_SENSOR_CENTRE_OFFSET_RIGHT+0.07);  //8.19/1.285
+        //double inity = DRIVETRAIN_RADIUS;
+        double initx = 2.1336;
         double inity = DRIVETRAIN_RADIUS;
         omnidrive.setPosition(new Vector2d(initx, inity));
 

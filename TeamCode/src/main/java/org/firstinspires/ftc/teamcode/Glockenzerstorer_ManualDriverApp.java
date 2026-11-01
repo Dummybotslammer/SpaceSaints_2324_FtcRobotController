@@ -84,6 +84,7 @@ public class Glockenzerstorer_ManualDriverApp extends LinearOpMode {
                 false, //#2 - Lift (Up)
                 false, //#3 - Lift (Down)
                 false, //#4 - Control Sensitivity State
+                false, //#5 - Intake Feeder (Reverse)
         });
 
         states.setSequences(new int[] {
@@ -158,6 +159,7 @@ public class Glockenzerstorer_ManualDriverApp extends LinearOpMode {
 
             //Intake Feeder
             if (states.highToggle(gamepad1.y, 0)) { DcMotorExController.togglePower(intakeFeeder, 1.0, 0.0); }
+            //if (states.highToggle(gamepad1.b, 5)) { DcMotorExController.togglePower(intakeFeeder, -1.0, 0.0); }
 
             //Outtake Pocket Pivot
             if (states.highToggle(gamepad1.x, 1)) {
